@@ -1,5 +1,18 @@
+import { Suspense } from "react";
 import { AuthCard } from "@/components/auth/auth-card";
 import { getSupabasePublicConfig } from "@/lib/supabase/config";
+
+function LoginPageFallback() {
+  return (
+    <main className="auth-simple-page" aria-busy="true">
+      <section className="auth-simple-card">
+        <span className="kicker">G-OPS / SECURE ACCESS</span>
+        <h1>Preparing secure access.</h1>
+        <p>Loading the sign-in controls...</p>
+      </section>
+    </main>
+  );
+}
 
 export default function LoginPage() {
   if (!getSupabasePublicConfig()) {
@@ -17,5 +30,9 @@ export default function LoginPage() {
     );
   }
 
-  return <AuthCard />;
+  return (
+    <Suspense fallback={<LoginPageFallback />}>
+      <AuthCard />
+    </Suspense>
+  );
 }
