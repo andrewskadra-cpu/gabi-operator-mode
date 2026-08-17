@@ -1,10 +1,10 @@
-import type { Campaign } from "@/content/types";
+import type { Campaign, CampaignLesson } from "@/content/types";
 
 interface CampaignOverviewProps {
   readonly campaign: Campaign;
 }
 
-const statusLabels = {
+const statusLabels: Record<CampaignLesson["status"], string> = {
   available: "Ready",
   locked: "Locked",
   draft: "Coming next",
@@ -22,7 +22,7 @@ export function CampaignOverview({ campaign }: CampaignOverviewProps) {
       </div>
 
       <div className="lesson-list" aria-label="Campaign lessons">
-        {campaign.lessons.map((lesson, index) => (
+        {campaign.lessons.map((lesson: CampaignLesson, index: number) => (
           <article className="lesson" key={lesson.id}>
             <div className="lesson__number" aria-hidden="true">
               {String(index + 1).padStart(2, "0")}
@@ -43,4 +43,3 @@ export function CampaignOverview({ campaign }: CampaignOverviewProps) {
     </section>
   );
 }
-

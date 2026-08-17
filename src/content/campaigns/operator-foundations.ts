@@ -1,6 +1,6 @@
 import type { Campaign } from "@/content/types";
 
-export const operatorFoundations: Campaign = {
+export const operatorFoundations = {
   id: "operator-foundations",
   eyebrow: "Campaign 01",
   title: "Operator Foundations",
@@ -31,5 +31,4 @@ export const operatorFoundations: Campaign = {
       status: "draft",
     },
   ],
-};
-
+} as const satisfies Campaign;

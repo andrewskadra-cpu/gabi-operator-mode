@@ -24,6 +24,25 @@ export interface BossOption extends AnswerOption {
   readonly points: number;
 }
 
+export type CampaignLessonStatus = "available" | "locked" | "draft";
+
+export interface CampaignLesson {
+  readonly id: string;
+  readonly title: string;
+  readonly description: string;
+  readonly durationMinutes: number;
+  readonly status: CampaignLessonStatus;
+}
+
+export interface Campaign {
+  readonly id: string;
+  readonly eyebrow: string;
+  readonly title: string;
+  readonly description: string;
+  readonly outcome: string;
+  readonly lessons: readonly CampaignLesson[];
+}
+
 export interface OperatorLevel {
   readonly id: string;
   readonly number: number;
@@ -71,4 +90,3 @@ export interface FutureCampaign {
   readonly description: string;
   readonly topics: readonly string[];
 }
-
