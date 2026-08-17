@@ -19,6 +19,7 @@ const opportunity: LocationOpportunity = {
   notes: "",
   stage: "Identified",
   createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z",
 };
 
 test("location pipeline advances one stage at a time", () => {
@@ -31,4 +32,3 @@ test("pipeline progress reaches 100 percent at Active", () => {
   assert.equal(getPipelineProgress("Identified"), 10);
   assert.equal(getPipelineProgress("Active"), 100);
 });
-

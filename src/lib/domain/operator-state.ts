@@ -1,4 +1,4 @@
-export const OPERATOR_STATE_VERSION = 1 as const;
+export const OPERATOR_STATE_VERSION = 2 as const;
 
 export type AppView =
   | "command"
@@ -7,7 +7,8 @@ export type AppView =
   | "network"
   | "labs"
   | "journal"
-  | "ventures";
+  | "ventures"
+  | "settings";
 
 export interface LevelProgress {
   readonly maxStep: number;
@@ -19,6 +20,7 @@ export interface LevelProgress {
   readonly bossScore: number | null;
   readonly reflection: string;
   readonly completedAt: string | null;
+  readonly updatedAt: string;
 }
 
 export interface FieldMissionLog {
@@ -34,6 +36,7 @@ export interface FieldMissionLog {
   readonly changeNextTime: string;
   readonly followUp: string;
   readonly createdAt: string;
+  readonly updatedAt: string;
 }
 
 export interface Relationship {
@@ -49,6 +52,7 @@ export interface Relationship {
   readonly notes: string;
   readonly strength: number;
   readonly createdAt: string;
+  readonly updatedAt: string;
 }
 
 export type CustomerExperienceMetric =
@@ -70,6 +74,7 @@ export interface CustomerExperienceAudit {
   readonly scores: Readonly<Record<CustomerExperienceMetric, number>>;
   readonly skadraDifference: string;
   readonly createdAt: string;
+  readonly updatedAt: string;
 }
 
 export interface ProcessMap {
@@ -86,6 +91,7 @@ export interface ProcessMap {
   readonly owner: string;
   readonly improvement: string;
   readonly createdAt: string;
+  readonly updatedAt: string;
 }
 
 export interface JournalEntry {
@@ -93,6 +99,7 @@ export interface JournalEntry {
   readonly weekOf: string;
   readonly responses: Readonly<Record<string, string>>;
   readonly createdAt: string;
+  readonly updatedAt: string;
 }
 
 export const LOCATION_STAGES = [
@@ -122,6 +129,7 @@ export interface LocationOpportunity {
   readonly notes: string;
   readonly stage: LocationStage;
   readonly createdAt: string;
+  readonly updatedAt: string;
 }
 
 export interface SharedVenture {
@@ -134,6 +142,23 @@ export interface SharedVenture {
   readonly managementRisk: string;
   readonly integrationNote: string;
   readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export interface PeopleLabSession {
+  readonly id: string;
+  readonly scenarioId: string;
+  readonly choiceId: string;
+  readonly score: number | null;
+  readonly reflection: string;
+  readonly completedAt: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export interface OperatorPreferences {
+  readonly reducedMotion: boolean;
+  readonly compactMode: boolean;
 }
 
 export interface OperatorState {
@@ -142,6 +167,7 @@ export interface OperatorState {
     readonly name: string;
     readonly title: string;
   };
+  readonly currentCampaignId: string;
   readonly lastView: AppView;
   readonly activeLevelId: string;
   readonly levelProgress: Readonly<Record<string, LevelProgress>>;
@@ -152,11 +178,16 @@ export interface OperatorState {
   readonly journalEntries: readonly JournalEntry[];
   readonly locations: readonly LocationOpportunity[];
   readonly sharedVentures: readonly SharedVenture[];
+  readonly peopleLabSessions: readonly PeopleLabSession[];
+  readonly achievementUnlocks: Readonly<Record<string, string>>;
+  readonly preferences: OperatorPreferences;
   readonly createdAt: string;
   readonly updatedAt: string;
 }
 
-export function createEmptyLevelProgress(): LevelProgress {
+export function createEmptyLevelProgress(
+  updatedAt = new Date().toISOString(),
+): LevelProgress {
   return {
     maxStep: 0,
     quizAnswers: {},
@@ -167,6 +198,7 @@ export function createEmptyLevelProgress(): LevelProgress {
     bossScore: null,
     reflection: "",
     completedAt: null,
+    updatedAt,
   };
 }
 
@@ -179,6 +211,7 @@ export function createInitialOperatorState(): OperatorState {
       name: "Gabi",
       title: "Future Vice President / COO",
     },
+    currentCampaignId: "year-one-core-operator",
     lastView: "command",
     activeLevelId: "follow-the-money",
     levelProgress: {},
@@ -189,8 +222,13 @@ export function createInitialOperatorState(): OperatorState {
     journalEntries: [],
     locations: [],
     sharedVentures: [],
+    peopleLabSessions: [],
+    achievementUnlocks: {},
+    preferences: {
+      reducedMotion: false,
+      compactMode: false,
+    },
     createdAt: now,
     updatedAt: now,
   };
 }
-

@@ -2,12 +2,13 @@ import {
   TRAINING_PROGRESS_VERSION,
   createEmptyProgress,
   type TrainingProgress,
-} from "@/lib/persistence/progress";
-import type { ProgressRepository } from "@/lib/persistence/progress-repository";
+} from "./progress.ts";
+import type { ProgressRepository } from "./progress-repository.ts";
 
-const STORAGE_KEY = "skadra.operator-mode.progress.v1";
+export const LEGACY_TRAINING_PROGRESS_STORAGE_KEY =
+  "skadra.operator-mode.progress.v1";
 
-function isTrainingProgress(value: unknown): value is TrainingProgress {
+export function isTrainingProgress(value: unknown): value is TrainingProgress {
   if (!value || typeof value !== "object") {
     return false;
   }
@@ -30,7 +31,9 @@ export class LocalProgressRepository implements ProgressRepository {
     }
 
     try {
-      const stored = window.localStorage.getItem(STORAGE_KEY);
+      const stored = window.localStorage.getItem(
+        LEGACY_TRAINING_PROGRESS_STORAGE_KEY,
+      );
       const parsed: unknown = stored ? JSON.parse(stored) : null;
       return isTrainingProgress(parsed) ? parsed : createEmptyProgress();
     } catch {
@@ -40,14 +43,16 @@ export class LocalProgressRepository implements ProgressRepository {
 
   save(progress: TrainingProgress): void {
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+      window.localStorage.setItem(
+        LEGACY_TRAINING_PROGRESS_STORAGE_KEY,
+        JSON.stringify(progress),
+      );
     }
   }
 
   clear(): void {
     if (typeof window !== "undefined") {
-      window.localStorage.removeItem(STORAGE_KEY);
+      window.localStorage.removeItem(LEGACY_TRAINING_PROGRESS_STORAGE_KEY);
     }
   }
 }
-

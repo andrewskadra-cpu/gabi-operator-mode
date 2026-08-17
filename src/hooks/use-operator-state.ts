@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createEmptyLevelProgress,
   createInitialOperatorState,
@@ -10,15 +10,40 @@ import {
   type JournalEntry,
   type LevelProgress,
   type LocationOpportunity,
+  type OperatorPreferences,
   type OperatorState,
   type ProcessMap,
   type Relationship,
   type SharedVenture,
 } from "@/lib/domain/operator-state";
 import { advanceLocation } from "@/lib/domain/pipeline";
-import { LocalOperatorStateRepository } from "@/lib/persistence/operator-state-repository";
+import { LocalSyncMetadataRepository } from "@/lib/persistence/local-sync-metadata-repository";
+import {
+  materializeAchievementUnlocks,
+  mergeOperatorStates,
+} from "@/lib/persistence/operator-state-merge";
+import {
+  getUserOperatorStateStorageKey,
+  LocalOperatorStateRepository,
+} from "@/lib/persistence/operator-state-repository";
+import {
+  OperatorStateSyncEngine,
+  type LegacyMigrationCandidate,
+  type MigrationChoice,
+  type SyncStatus,
+} from "@/lib/persistence/operator-state-sync-engine";
+import { parseOperatorState } from "@/lib/persistence/operator-state-codec";
+import { SupabaseOperatorStateRepository } from "@/lib/persistence/supabase-operator-state-repository";
+import { createClient } from "@/lib/supabase/client";
 
-type NewRecord<T extends { id: string; createdAt: string }> = Omit<T, "id" | "createdAt">;
+type NewRecord<T extends { id: string; createdAt: string; updatedAt: string }> =
+  Omit<T, "id" | "createdAt" | "updatedAt">;
+
+export interface OperatorAccount {
+  readonly id: string;
+  readonly email: string;
+  readonly displayName: string;
+}
 
 function makeId(prefix: string): string {
   const suffix =
@@ -29,42 +54,144 @@ function makeId(prefix: string): string {
   return prefix + "-" + suffix;
 }
 
-function stamp(state: OperatorState): OperatorState {
+function withRecordMetadata<T extends object>(
+  prefix: string,
+  record: T,
+): T & { id: string; createdAt: string; updatedAt: string } {
+  const now = new Date().toISOString();
   return {
-    ...state,
-    updatedAt: new Date().toISOString(),
+    ...record,
+    id: makeId(prefix),
+    createdAt: now,
+    updatedAt: now,
   };
 }
 
-export function useOperatorState() {
-  const repository = useMemo(() => new LocalOperatorStateRepository(), []);
-  const [state, setState] = useState<OperatorState>(() => createInitialOperatorState());
+function stamp(state: OperatorState, updatedAt: string): OperatorState {
+  return materializeAchievementUnlocks(
+    {
+      ...state,
+      updatedAt,
+    },
+    updatedAt,
+  );
+}
+
+export function useOperatorState(account: OperatorAccount) {
+  const [state, setState] = useState<OperatorState>(() =>
+    createInitialOperatorState(),
+  );
   const [hydrated, setHydrated] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>({
+    phase: "loading",
+    lastSuccessfulSyncAt: null,
+    message: null,
+  });
+  const [migration, setMigration] =
+    useState<LegacyMigrationCandidate | null>(null);
+  const urgentSaveRef = useRef(false);
+  const skipNextSaveRef = useRef(false);
+  const syncEngineRef = useRef<OperatorStateSyncEngine | null>(null);
 
+  const repository = useMemo(
+    () => new LocalOperatorStateRepository(undefined, account.id),
+    [account.id],
+  );
   useEffect(() => {
-    const hydrationTimer = window.setTimeout(() => {
-      setState(repository.load());
+    let cancelled = false;
+    const cloudRepository = new SupabaseOperatorStateRepository(createClient());
+    const metadataRepository = new LocalSyncMetadataRepository(account.id);
+    const syncEngine = new OperatorStateSyncEngine(
+      repository,
+      cloudRepository,
+      metadataRepository,
+      setSyncStatus,
+      (resolvedState) => {
+        skipNextSaveRef.current = true;
+        setState(resolvedState);
+      },
+    );
+    syncEngineRef.current = syncEngine;
+
+    void syncEngine.hydrate().then((result) => {
+      if (cancelled) {
+        return;
+      }
+
+      skipNextSaveRef.current = true;
+      setState(result.state);
+      setMigration(result.migration);
       setHydrated(true);
-    }, 0);
+    });
 
-    return () => window.clearTimeout(hydrationTimer);
-  }, [repository]);
+    return () => {
+      cancelled = true;
+      syncEngine.dispose();
+      if (syncEngineRef.current === syncEngine) {
+        syncEngineRef.current = null;
+      }
+    };
+  }, [account.id, repository]);
 
   useEffect(() => {
-    if (hydrated) {
-      repository.save(state);
+    if (!hydrated) {
+      return;
     }
-  }, [hydrated, repository, state]);
+
+    if (skipNextSaveRef.current) {
+      skipNextSaveRef.current = false;
+      return;
+    }
+
+    syncEngineRef.current?.save(state, urgentSaveRef.current);
+    urgentSaveRef.current = false;
+  }, [hydrated, state]);
+
+  useEffect(() => {
+    const retry = () => void syncEngineRef.current?.retry();
+    const acceptOtherTabBackup = (event: StorageEvent) => {
+      if (
+        event.key !== getUserOperatorStateStorageKey(account.id) ||
+        !event.newValue
+      ) {
+        return;
+      }
+
+      try {
+        const incoming = parseOperatorState(JSON.parse(event.newValue) as unknown);
+        if (incoming) {
+          setState((current) => mergeOperatorStates(current, incoming));
+        }
+      } catch {
+        // Ignore malformed cross-tab messages; the last valid backup remains intact.
+      }
+    };
+
+    window.addEventListener("online", retry);
+    window.addEventListener("storage", acceptOtherTabBackup);
+    return () => {
+      window.removeEventListener("online", retry);
+      window.removeEventListener("storage", acceptOtherTabBackup);
+    };
+  }, [account.id]);
 
   const updateState = useCallback(
-    (updater: (current: OperatorState) => OperatorState) => {
-      setState((current) => stamp(updater(current)));
+    (
+      updater: (current: OperatorState) => OperatorState,
+      immediate = false,
+    ) => {
+      urgentSaveRef.current ||= immediate;
+      setState((current) => {
+        const updatedAt = new Date().toISOString();
+        return stamp(updater(current), updatedAt);
+      });
     },
     [],
   );
 
   const setView = useCallback(
-    (view: AppView) => updateState((current) => ({ ...current, lastView: view })),
+    (view: AppView) =>
+      updateState((current) => ({ ...current, lastView: view })),
     [updateState],
   );
 
@@ -79,40 +206,60 @@ export function useOperatorState() {
   );
 
   const updateLevel = useCallback(
-    (levelId: string, updates: Partial<LevelProgress>) =>
-      updateState((current) => {
-        const existing = current.levelProgress[levelId] ?? createEmptyLevelProgress();
+    (levelId: string, updates: Partial<LevelProgress>) => {
+      const immediate =
+        "completedAt" in updates ||
+        "quizScore" in updates ||
+        "bossScore" in updates;
 
-        return {
-          ...current,
-          levelProgress: {
-            ...current.levelProgress,
-            [levelId]: {
-              ...existing,
-              ...updates,
+      updateState(
+        (current) => {
+          const updatedAt = new Date().toISOString();
+          const existing =
+            current.levelProgress[levelId] ??
+            createEmptyLevelProgress(updatedAt);
+
+          return {
+            ...current,
+            levelProgress: {
+              ...current.levelProgress,
+              [levelId]: {
+                ...existing,
+                ...updates,
+                updatedAt,
+              },
             },
-          },
-        };
-      }),
+          };
+        },
+        immediate,
+      );
+    },
     [updateState],
   );
 
   const unlockLevelStep = useCallback(
     (levelId: string, step: number) =>
-      updateState((current) => {
-        const existing = current.levelProgress[levelId] ?? createEmptyLevelProgress();
+      updateState(
+        (current) => {
+          const updatedAt = new Date().toISOString();
+          const existing =
+            current.levelProgress[levelId] ??
+            createEmptyLevelProgress(updatedAt);
 
-        return {
-          ...current,
-          levelProgress: {
-            ...current.levelProgress,
-            [levelId]: {
-              ...existing,
-              maxStep: Math.max(existing.maxStep, step),
+          return {
+            ...current,
+            levelProgress: {
+              ...current.levelProgress,
+              [levelId]: {
+                ...existing,
+                maxStep: Math.max(existing.maxStep, step),
+                updatedAt,
+              },
             },
-          },
-        };
-      }),
+          };
+        },
+        true,
+      ),
     [updateState],
   );
 
@@ -127,135 +274,237 @@ export function useOperatorState() {
 
   const addFieldMission = useCallback(
     (mission: NewRecord<FieldMissionLog>) =>
-      updateState((current) => ({
-        ...current,
-        fieldMissions: [
-          {
-            ...mission,
-            id: makeId("field"),
-            createdAt: new Date().toISOString(),
-          },
-          ...current.fieldMissions,
-        ],
-      })),
+      updateState(
+        (current) => ({
+          ...current,
+          fieldMissions: [
+            withRecordMetadata("field", mission),
+            ...current.fieldMissions,
+          ],
+        }),
+        true,
+      ),
     [updateState],
   );
 
   const addRelationship = useCallback(
     (relationship: NewRecord<Relationship>) =>
-      updateState((current) => ({
-        ...current,
-        relationships: [
-          {
-            ...relationship,
-            id: makeId("relationship"),
-            createdAt: new Date().toISOString(),
-          },
-          ...current.relationships,
-        ],
-      })),
+      updateState(
+        (current) => ({
+          ...current,
+          relationships: [
+            withRecordMetadata("relationship", relationship),
+            ...current.relationships,
+          ],
+        }),
+        true,
+      ),
+    [updateState],
+  );
+
+  const updateRelationship = useCallback(
+    (relationshipId: string, updates: Partial<NewRecord<Relationship>>) =>
+      updateState(
+        (current) => {
+          const updatedAt = new Date().toISOString();
+          return {
+            ...current,
+            relationships: current.relationships.map((relationship) =>
+              relationship.id === relationshipId
+                ? { ...relationship, ...updates, updatedAt }
+                : relationship,
+            ),
+          };
+        },
+        true,
+      ),
+    [updateState],
+  );
+
+  const removeRelationship = useCallback(
+    (relationshipId: string) =>
+      updateState(
+        (current) => ({
+          ...current,
+          relationships: current.relationships.filter(
+            (relationship) => relationship.id !== relationshipId,
+          ),
+        }),
+        true,
+      ),
     [updateState],
   );
 
   const addCustomerAudit = useCallback(
     (audit: NewRecord<CustomerExperienceAudit>) =>
-      updateState((current) => ({
-        ...current,
-        customerAudits: [
-          {
-            ...audit,
-            id: makeId("audit"),
-            createdAt: new Date().toISOString(),
-          },
-          ...current.customerAudits,
-        ],
-      })),
+      updateState(
+        (current) => ({
+          ...current,
+          customerAudits: [
+            withRecordMetadata("audit", audit),
+            ...current.customerAudits,
+          ],
+        }),
+        true,
+      ),
     [updateState],
   );
 
   const addProcessMap = useCallback(
     (processMap: NewRecord<ProcessMap>) =>
-      updateState((current) => ({
-        ...current,
-        processMaps: [
-          {
-            ...processMap,
-            id: makeId("process"),
-            createdAt: new Date().toISOString(),
-          },
-          ...current.processMaps,
-        ],
-      })),
+      updateState(
+        (current) => ({
+          ...current,
+          processMaps: [
+            withRecordMetadata("process", processMap),
+            ...current.processMaps,
+          ],
+        }),
+        true,
+      ),
     [updateState],
   );
 
   const addJournalEntry = useCallback(
     (entry: NewRecord<JournalEntry>) =>
-      updateState((current) => ({
-        ...current,
-        journalEntries: [
-          {
-            ...entry,
-            id: makeId("journal"),
-            createdAt: new Date().toISOString(),
-          },
-          ...current.journalEntries,
-        ],
-      })),
+      updateState(
+        (current) => ({
+          ...current,
+          journalEntries: [
+            withRecordMetadata("journal", entry),
+            ...current.journalEntries,
+          ],
+        }),
+        true,
+      ),
     [updateState],
   );
 
   const addLocation = useCallback(
     (location: NewRecord<LocationOpportunity>) =>
-      updateState((current) => ({
-        ...current,
-        locations: [
-          {
-            ...location,
-            id: makeId("location"),
-            createdAt: new Date().toISOString(),
-          },
-          ...current.locations,
-        ],
-      })),
+      updateState(
+        (current) => ({
+          ...current,
+          locations: [
+            withRecordMetadata("location", location),
+            ...current.locations,
+          ],
+        }),
+        true,
+      ),
     [updateState],
   );
 
   const advanceLocationStage = useCallback(
     (locationId: string) =>
-      updateState((current) => ({
-        ...current,
-        locations: current.locations.map((location) =>
-          location.id === locationId ? advanceLocation(location) : location,
-        ),
-      })),
+      updateState(
+        (current) => {
+          const updatedAt = new Date().toISOString();
+          return {
+            ...current,
+            locations: current.locations.map((location) =>
+              location.id === locationId
+                ? { ...advanceLocation(location), updatedAt }
+                : location,
+            ),
+          };
+        },
+        true,
+      ),
     [updateState],
   );
 
   const addSharedVenture = useCallback(
     (venture: NewRecord<SharedVenture>) =>
-      updateState((current) => ({
-        ...current,
-        sharedVentures: [
-          {
-            ...venture,
-            id: makeId("venture"),
-            createdAt: new Date().toISOString(),
-          },
-          ...current.sharedVentures,
-        ],
-      })),
+      updateState(
+        (current) => ({
+          ...current,
+          sharedVentures: [
+            withRecordMetadata("venture", venture),
+            ...current.sharedVentures,
+          ],
+        }),
+        true,
+      ),
     [updateState],
   );
 
+  const savePeopleLabAnswer = useCallback(
+    (scenarioId: string, choiceId: string) =>
+      updateState(
+        (current) => {
+          const now = new Date().toISOString();
+          const existing = current.peopleLabSessions.find(
+            (session) => session.scenarioId === scenarioId,
+          );
+          const session = {
+            id: existing?.id ?? makeId("people"),
+            scenarioId,
+            choiceId,
+            score: existing?.score ?? null,
+            reflection: existing?.reflection ?? "",
+            completedAt: existing?.completedAt ?? now,
+            createdAt: existing?.createdAt ?? now,
+            updatedAt: now,
+          };
+
+          return {
+            ...current,
+            peopleLabSessions: [
+              session,
+              ...current.peopleLabSessions.filter(
+                (item) => item.scenarioId !== scenarioId,
+              ),
+            ],
+          };
+        },
+        true,
+      ),
+    [updateState],
+  );
+
+  const updatePreferences = useCallback(
+    (updates: Partial<OperatorPreferences>) =>
+      updateState(
+        (current) => ({
+          ...current,
+          preferences: { ...current.preferences, ...updates },
+        }),
+        true,
+      ),
+    [updateState],
+  );
+
+  const resolveMigration = useCallback(
+    async (choice: MigrationChoice) => {
+      const syncEngine = syncEngineRef.current;
+      if (!syncEngine) {
+        throw new Error("Cloud sync is still starting.");
+      }
+
+      const resolved = await syncEngine.resolveMigration(choice);
+      skipNextSaveRef.current = true;
+      setState(resolved);
+      setMigration(null);
+    },
+    [],
+  );
+
+  const retrySync = useCallback(
+    () => syncEngineRef.current?.retry() ?? Promise.resolve(),
+    [],
+  );
+
   const resetState = useCallback(() => {
-    repository.clear();
+    urgentSaveRef.current = true;
     setState(createInitialOperatorState());
-  }, [repository]);
+  }, []);
 
   return {
     state,
     hydrated,
+    syncStatus,
+    migration,
     setView,
     selectLevel,
     updateLevel,
@@ -263,12 +512,18 @@ export function useOperatorState() {
     completeLevel,
     addFieldMission,
     addRelationship,
+    updateRelationship,
+    removeRelationship,
     addCustomerAudit,
     addProcessMap,
     addJournalEntry,
     addLocation,
     advanceLocationStage,
     addSharedVenture,
+    savePeopleLabAnswer,
+    updatePreferences,
+    resolveMigration,
+    retrySync,
     resetState,
   };
 }

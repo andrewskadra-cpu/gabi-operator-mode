@@ -125,7 +125,7 @@ export function FieldOpsView({
             <button className="primary-button field-group--wide" type="submit">
               SAVE FIELD MISSION <span aria-hidden="true">→</span>
             </button>
-            {saved && <p className="save-confirmation field-group--wide">Mission saved locally. +50 XP</p>}
+            {saved && <p className="save-confirmation field-group--wide">Mission saved to the device backup and queued for cloud sync. +50 XP</p>}
           </form>
         </section>
 
@@ -162,4 +162,3 @@ export function FieldOpsView({
     </main>
   );
 }
-

@@ -3,6 +3,7 @@
 import type { Achievement } from "@/lib/domain/achievements";
 import type { AppView, OperatorState } from "@/lib/domain/operator-state";
 import type { OperatorLevel } from "@/content/types";
+import type { SyncStatus } from "@/lib/persistence/operator-state-sync-engine";
 import {
   getNextActionLabel,
   getRankProgress,
@@ -16,6 +17,7 @@ interface CommandCenterProps {
   readonly campaignProgress: number;
   readonly currentLevel: OperatorLevel;
   readonly achievements: readonly Achievement[];
+  readonly syncStatus: SyncStatus;
   readonly onOpenLevel: () => void;
   readonly onNavigate: (view: AppView) => void;
 }
@@ -27,6 +29,7 @@ export function CommandCenter({
   campaignProgress,
   currentLevel,
   achievements,
+  syncStatus,
   onOpenLevel,
   onNavigate,
 }: CommandCenterProps) {
@@ -39,12 +42,18 @@ export function CommandCenter({
       <div className="page-masthead">
         <div>
           <span className="kicker">G-OPS / COMMAND CENTER</span>
-          <h2>Good morning, Gabi.</h2>
+          <h2>Good morning, {state.profile.name}.</h2>
           <p>Your next move is ready. Keep the operating rhythm.</p>
         </div>
-        <div className="status-chip">
+        <div className={`status-chip status-chip--${syncStatus.phase}`}>
           <span className="status-chip__pulse" aria-hidden="true" />
-          LOCAL SYSTEM ONLINE
+          {syncStatus.phase === "saved"
+            ? "CLOUD + DEVICE SAVED"
+            : syncStatus.phase === "offline"
+              ? "DEVICE BACKUP ACTIVE"
+              : syncStatus.phase === "issue"
+                ? "CLOUD SYNC NEEDS ATTENTION"
+                : "SECURE SYNC ACTIVE"}
         </div>
       </div>
 
@@ -216,4 +225,3 @@ export function CommandCenter({
     </main>
   );
 }
-

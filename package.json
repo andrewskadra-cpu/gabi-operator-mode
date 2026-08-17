@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test": "node --test --experimental-strip-types src/lib/domain/progression.test.ts src/lib/domain/scoring.test.ts src/lib/domain/pipeline.test.ts src/lib/domain/achievements.test.ts src/lib/persistence/operator-state-repository.test.ts",
+    "test": "node --test --experimental-strip-types src/lib/domain/progression.test.ts src/lib/domain/scoring.test.ts src/lib/domain/pipeline.test.ts src/lib/domain/achievements.test.ts src/lib/persistence/operator-state-codec.test.ts src/lib/persistence/operator-state-merge.test.ts src/lib/persistence/operator-state-repository.test.ts src/lib/persistence/operator-state-sync-engine.test.ts",
     "typecheck": "tsc --noEmit",
     "check": "npm run lint && npm run typecheck && npm run test && npm run build"
   },
@@ -16,6 +16,8 @@
     "node": ">=22.0.0"
   },
   "dependencies": {
+    "@supabase/ssr": "0.12.4",
+    "@supabase/supabase-js": "2.112.3",
     "next": "16.3.1",
     "react": "19.2.8",
     "react-dom": "19.2.8"

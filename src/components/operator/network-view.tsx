@@ -24,12 +24,49 @@ export function NetworkView({
 }) {
   const [form, setForm] = useState(emptyRelationship);
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    controller.addRelationship(form);
+    if (editingId) {
+      controller.updateRelationship(editingId, form);
+    } else {
+      controller.addRelationship(form);
+    }
     setForm(emptyRelationship);
+    setEditingId(null);
     setShowForm(false);
+  };
+
+  const editRelationship = (relationshipId: string) => {
+    const relationship = controller.state.relationships.find(
+      (item) => item.id === relationshipId,
+    );
+    if (!relationship) {
+      return;
+    }
+
+    setForm({
+      name: relationship.name,
+      company: relationship.company,
+      role: relationship.role,
+      category: relationship.category,
+      howWeMet: relationship.howWeMet,
+      caresAbout: relationship.caresAbout,
+      lastContact: relationship.lastContact,
+      nextContact: relationship.nextContact,
+      notes: relationship.notes,
+      strength: relationship.strength,
+    });
+    setEditingId(relationshipId);
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const deleteRelationship = (relationshipId: string, name: string) => {
+    if (window.confirm(`Remove ${name} from the relationship network?`)) {
+      controller.removeRelationship(relationshipId);
+    }
   };
 
   const dueContacts = controller.state.relationships.filter(
@@ -44,7 +81,11 @@ export function NetworkView({
           <h2>Relationships before requests.</h2>
           <p>Remember what matters. Keep promises. Stay genuinely useful.</p>
         </div>
-        <button className="primary-button primary-button--small" type="button" onClick={() => setShowForm((value) => !value)}>
+        <button className="primary-button primary-button--small" type="button" onClick={() => {
+          setShowForm((value) => !value);
+          setEditingId(null);
+          setForm(emptyRelationship);
+        }}>
           {showForm ? "CLOSE FORM" : "+ ADD RELATIONSHIP"}
         </button>
       </div>
@@ -67,8 +108,8 @@ export function NetworkView({
       {showForm && (
         <section className="inline-form-panel">
           <div>
-            <span className="kicker kicker--gold">NEW RELATIONSHIP</span>
-            <h3>Record context, not just contact data.</h3>
+            <span className="kicker kicker--gold">{editingId ? "EDIT RELATIONSHIP" : "NEW RELATIONSHIP"}</span>
+            <h3>{editingId ? "Keep the relationship record current." : "Record context, not just contact data."}</h3>
           </div>
           <form className="form-grid form-grid--three" onSubmit={submit}>
             <label className="field-group">
@@ -113,7 +154,7 @@ export function NetworkView({
               <span>RELATIONSHIP STRENGTH / {form.strength}</span>
               <input type="range" min="1" max="5" value={form.strength} onChange={(event) => setForm((current) => ({ ...current, strength: Number(event.target.value) }))} />
             </label>
-            <button className="primary-button field-group--wide" type="submit">SAVE RELATIONSHIP <span>→</span></button>
+            <button className="primary-button field-group--wide" type="submit">{editingId ? "SAVE CHANGES" : "SAVE RELATIONSHIP"} <span>→</span></button>
           </form>
         </section>
       )}
@@ -150,6 +191,10 @@ export function NetworkView({
                 <div><span>LAST</span><strong>{relationship.lastContact || "—"}</strong></div>
                 <div><span>NEXT</span><strong>{relationship.nextContact || "—"}</strong></div>
               </div>
+              <div className="relationship-card__actions">
+                <button className="text-button" type="button" onClick={() => editRelationship(relationship.id)}>EDIT</button>
+                <button className="text-button text-button--danger" type="button" onClick={() => deleteRelationship(relationship.id, relationship.name)}>REMOVE</button>
+              </div>
             </article>
           ))}
         </section>
@@ -157,4 +202,3 @@ export function NetworkView({
     </main>
   );
 }
-

@@ -3,12 +3,17 @@
 import type { ReactNode } from "react";
 import type { AppView } from "@/lib/domain/operator-state";
 import type { Rank } from "@/lib/domain/progression";
+import type { SyncStatus } from "@/lib/persistence/operator-state-sync-engine";
 
 interface AppShellProps {
   readonly activeView: AppView;
   readonly onNavigate: (view: AppView) => void;
   readonly xp: number;
   readonly rank: Rank;
+  readonly displayName: string;
+  readonly syncStatus: SyncStatus;
+  readonly compactMode: boolean;
+  readonly reducedMotion: boolean;
   readonly children: ReactNode;
 }
 
@@ -24,17 +29,37 @@ const navigation: readonly {
   { view: "labs", label: "Operator Labs", short: "05" },
   { view: "journal", label: "Operator Journal", short: "06" },
   { view: "ventures", label: "Ventures & Pipeline", short: "07" },
+  { view: "settings", label: "Settings & Data", short: "08" },
 ];
+
+const syncLabels: Readonly<Record<SyncStatus["phase"], string>> = {
+  loading: "Loading cloud",
+  saving: "Saving...",
+  saved: "Saved",
+  offline: "Offline backup",
+  syncing: "Syncing...",
+  issue: "Sync issue",
+};
 
 export function AppShell({
   activeView,
   onNavigate,
   xp,
   rank,
+  displayName,
+  syncStatus,
+  compactMode,
+  reducedMotion,
   children,
 }: AppShellProps) {
   return (
-    <div className="operator-shell">
+    <div
+      className={
+        "operator-shell" +
+        (compactMode ? " operator-shell--compact" : "") +
+        (reducedMotion ? " operator-shell--reduced-motion" : "")
+      }
+    >
       <aside className="sidebar">
         <button
           className="wordmark"
@@ -70,10 +95,18 @@ export function AppShell({
           ))}
         </nav>
 
-        <div className="sidebar__profile">
-          <div className="avatar">G</div>
+        <div className={`sidebar__sync sidebar__sync--${syncStatus.phase}`}>
+          <span className="sync-dot" aria-hidden="true" />
           <div>
-            <strong>Gabi</strong>
+            <strong>{syncLabels[syncStatus.phase]}</strong>
+            <small>Cloud + device backup</small>
+          </div>
+        </div>
+
+        <div className="sidebar__profile">
+          <div className="avatar">{displayName.slice(0, 1).toUpperCase()}</div>
+          <div>
+            <strong>{displayName}</strong>
             <span>{rank.name}</span>
           </div>
           <div className="sidebar__xp">{xp.toLocaleString()} XP</div>
@@ -103,10 +136,12 @@ export function AppShell({
               ))}
             </select>
           </label>
+          <span className={`mobile-sync mobile-sync--${syncStatus.phase}`}>
+            {syncLabels[syncStatus.phase]}
+          </span>
         </header>
         {children}
       </div>
     </div>
   );
 }
-

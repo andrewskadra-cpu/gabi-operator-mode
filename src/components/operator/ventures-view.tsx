@@ -60,7 +60,7 @@ export function VenturesView({
         <div>
           <span className="kicker">VENTURES / OPPORTUNITY OPERATIONS</span>
           <h2>Build the pipeline. Assess the operation.</h2>
-          <p>V1 stays local. Future founder integration remains a deliberate boundary.</p>
+          <p>Your operating records sync securely. Future founder integration remains a deliberate boundary.</p>
         </div>
       </div>
 
@@ -166,7 +166,7 @@ export function VenturesView({
               <div><span>ANDREW / CEO</span><strong>Financial attractiveness</strong><p>Price, return, financing, structure, capital allocation.</p></div>
               <div><span>GABI / COO</span><strong>Operational attractiveness</strong><p>People, customers, management, systems, culture, integration.</p></div>
             </div>
-            <p className="founders-boundary">This V1 does not connect to Andrew&apos;s application. It stores Gabi&apos;s independent operating assessment locally through a future-ready SharedVenture record.</p>
+            <p className="founders-boundary">This application does not connect to Andrew&apos;s application. It stores Gabi&apos;s independent operating assessment in Operator Mode through a future-ready SharedVenture record.</p>
           </section>
 
           <section className="tool-form-card">
@@ -203,4 +203,3 @@ export function VenturesView({
     </main>
   );
 }
-

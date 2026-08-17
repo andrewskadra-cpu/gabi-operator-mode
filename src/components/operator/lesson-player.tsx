@@ -161,7 +161,7 @@ export function LessonPlayer({
                 <article>
                   <span className="kicker">MISSION LENGTH</span>
                   <strong>{level.durationMinutes} minutes</strong>
-                  <p>Self-paced. Your progress saves on this device.</p>
+                  <p>Self-paced. Your progress saves to this device and your secure cloud account.</p>
                 </article>
               </div>
               <div className="outcome-block">

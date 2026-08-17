@@ -131,7 +131,6 @@ export function LabsView({
     owner: "",
     improvement: "",
   });
-  const [peopleAnswers, setPeopleAnswers] = useState<Record<string, string>>({});
 
   const saveAudit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -330,7 +329,9 @@ export function LabsView({
           </div>
           <div className="people-scenarios">
             {peopleScenarios.map((scenario, scenarioIndex) => {
-              const answer = peopleAnswers[scenario.id];
+              const answer = controller.state.peopleLabSessions.find(
+                (session) => session.scenarioId === scenario.id,
+              )?.choiceId;
               const selected = scenario.choices.find((choice) => choice.id === answer);
 
               return (
@@ -347,7 +348,9 @@ export function LabsView({
                         type="button"
                         key={choice.id}
                         className={answer === choice.id ? "active" : ""}
-                        onClick={() => setPeopleAnswers((current) => ({ ...current, [scenario.id]: choice.id }))}
+                        onClick={() =>
+                          controller.savePeopleLabAnswer(scenario.id, choice.id)
+                        }
                       >
                         <span>{choice.id.toUpperCase()}</span>
                         {choice.label}
@@ -364,4 +367,3 @@ export function LabsView({
     </main>
   );
 }
-
