@@ -1,16 +1,20 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { journalPrompts } from "@/content/field-mission-templates";
+import { roleJournalPrompts } from "@/content/executive-tracks";
 import type { OperatorStateController } from "@/hooks/use-operator-state";
+import type { ExecutiveRole } from "@/lib/domain/executive-role";
 
 export function JournalView({
   controller,
+  role,
 }: {
   readonly controller: OperatorStateController;
+  readonly role: ExecutiveRole;
 }) {
   const [weekOf, setWeekOf] = useState("");
   const [responses, setResponses] = useState<Record<string, string>>({});
+  const journalPrompts = roleJournalPrompts[role];
 
   const save = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -23,9 +27,11 @@ export function JournalView({
     <main className="workspace-page journal-page">
       <div className="page-masthead">
         <div>
-          <span className="kicker">OPERATOR JOURNAL / WEEKLY DEBRIEF</span>
+          <span className="kicker">{role.toUpperCase()} JOURNAL / WEEKLY DEBRIEF</span>
           <h2>Experience is not the teacher.<br />Reflection is.</h2>
-          <p>Turn the week&apos;s details into better future judgment.</p>
+          <p>
+            Turn the week&apos;s details into better {role === "ceo" ? "capital and leadership" : "operating"} judgment.
+          </p>
         </div>
         <div className="page-stat">
           <strong>{controller.state.journalEntries.length}</strong>

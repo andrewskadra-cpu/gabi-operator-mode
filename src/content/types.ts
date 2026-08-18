@@ -1,9 +1,15 @@
+import type {
+  ExecutiveRole,
+  ExecutiveSkill,
+} from "@/lib/domain/executive-role";
+
 export interface TeachingConcept {
   readonly term: string;
   readonly plainEnglish: string;
   readonly whyItMatters: string;
   readonly example: string;
   readonly gabiUse: string;
+  readonly roleApplication?: string;
   readonly commonMistake: string;
 }
 
@@ -51,8 +57,12 @@ export interface OperatorLevel {
   readonly tagline: string;
   readonly durationMinutes: number;
   readonly xpReward: number;
+  readonly executiveRole?: ExecutiveRole;
+  readonly campaignId?: string;
+  readonly scoreSkills?: readonly ExecutiveSkill[];
   readonly missionBrief: string;
   readonly whyGabiNeedsThis: string;
+  readonly whyExecutiveNeedsThis?: string;
   readonly outcomes: readonly string[];
   readonly concepts: readonly TeachingConcept[];
   readonly supportingTopics: readonly string[];

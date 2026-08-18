@@ -175,7 +175,27 @@ export function mergeOperatorStates(
   return materializeAchievementUnlocks({
     ...older,
     ...newer,
-    profile: newer.profile,
+    profile: {
+      ...newer.profile,
+      executiveRole:
+        newer.profile.executiveRole ?? older.profile.executiveRole,
+      roleSelectedAt:
+        newer.profile.roleSelectedAt && older.profile.roleSelectedAt
+          ? earlierTimestamp(
+              newer.profile.roleSelectedAt,
+              older.profile.roleSelectedAt,
+            )
+          : newer.profile.roleSelectedAt ?? older.profile.roleSelectedAt,
+      onboardingCompletedAt:
+        newer.profile.onboardingCompletedAt &&
+        older.profile.onboardingCompletedAt
+          ? earlierTimestamp(
+              newer.profile.onboardingCompletedAt,
+              older.profile.onboardingCompletedAt,
+            )
+          : newer.profile.onboardingCompletedAt ??
+            older.profile.onboardingCompletedAt,
+    },
     preferences: newer.preferences,
     levelProgress: mergeLevelProgressMap(first.levelProgress, second.levelProgress),
     fieldMissions: mergeRecords(first.fieldMissions, second.fieldMissions),
@@ -188,6 +208,10 @@ export function mergeOperatorStates(
     peopleLabSessions: mergeRecords(
       first.peopleLabSessions,
       second.peopleLabSessions,
+    ),
+    founderMissions: mergeRecords(
+      first.founderMissions,
+      second.founderMissions,
     ),
     achievementUnlocks,
     createdAt: earlierTimestamp(first.createdAt, second.createdAt),

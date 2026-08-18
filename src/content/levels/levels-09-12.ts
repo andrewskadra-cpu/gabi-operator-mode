@@ -1,4 +1,4 @@
-import { bossOptions, concept, defineLevel, question } from "@/content/levels/helpers";
+import { bossOptions, concept, defineLevel, question } from "./helpers.ts";
 
 export const levels09To12 = [
   defineLevel({
@@ -430,4 +430,3 @@ export const levels09To12 = [
     reflectionPrompt: "What behavior would your future team learn is acceptable by watching only what you tolerate?",
   }),
 ] as const;
-

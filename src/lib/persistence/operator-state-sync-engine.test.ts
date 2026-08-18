@@ -144,6 +144,53 @@ test("new accounts initialize cloud state and later sessions restore it", async 
   assert.equal(secondStatuses.at(-1)?.phase, "saved");
 });
 
+test("role and founder mission progress restore on a second device", async () => {
+  const cloud = new MockCloudRepository();
+  const firstStorage = new MemoryStorage();
+  const firstEngine = createEngine(firstStorage, cloud, []);
+  await firstEngine.hydrate();
+
+  const timestamp = "2026-08-18T12:00:00.000Z";
+  const state: OperatorState = {
+    ...createInitialOperatorState({
+      name: "Andrew",
+      title: "CEO / President in Training",
+      executiveRole: "ceo",
+      roleSelectedAt: timestamp,
+      onboardingCompletedAt: timestamp,
+    }),
+    currentCampaignId: "ceo-owners-foundation",
+    activeLevelId: "ceo-financial-statements",
+    founderMissions: [
+      {
+        id: "founder-case-1",
+        missionId: "founder-first-vending-location",
+        executiveRole: "ceo",
+        status: "complete",
+        analysis: "The location clears the base-case return threshold.",
+        recommendation: "Deploy subject to verified demand.",
+        decision: "deploy",
+        reflection: "The COO site visit can change the volume assumption.",
+        completedAt: timestamp,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      },
+    ],
+    updatedAt: timestamp,
+  };
+  firstEngine.save(state);
+  await firstEngine.flush();
+  firstEngine.dispose();
+
+  const secondEngine = createEngine(new MemoryStorage(), cloud, []);
+  const restored = await secondEngine.hydrate();
+  secondEngine.dispose();
+
+  assert.equal(restored.state.profile.executiveRole, "ceo");
+  assert.equal(restored.state.currentCampaignId, "ceo-owners-foundation");
+  assert.equal(restored.state.founderMissions[0].decision, "deploy");
+});
+
 test("offline hydration uses the per-user device backup without discarding it", async () => {
   const cloud = new MockCloudRepository();
   cloud.failLoad = true;

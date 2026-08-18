@@ -1,4 +1,4 @@
-import { bossOptions, concept, defineLevel, question } from "@/content/levels/helpers";
+import { bossOptions, concept, defineLevel, question } from "./helpers.ts";
 
 export const levels01To04 = [
   defineLevel({
@@ -503,4 +503,3 @@ export const levels01To04 = [
       "What part of sales feels uncomfortable to you, and how does the diagnosis mindset change it?",
   }),
 ] as const;
-

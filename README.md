@@ -1,12 +1,12 @@
-# Skadra Ventures — Operator Mode
+# Skadra Ventures — G-OPS V2
 
-Operator Mode is Gabi's standalone executive operations and leadership simulator. Its command center is G-OPS: the Gabi Operations Command System.
+G-OPS is one secure executive-development application with complementary tracks for Andrew (CEO / President) and Gabi (COO / Vice President). Each authenticated account has one durable role, its own command center, curriculum, missions, scorecard, achievements, and private progress.
 
-The application teaches concepts in plain language before asking Gabi to practice, test, apply, and reflect. It combines a 16-level Year One curriculum with field missions, relationship building, customer and operations labs, a weekly journal, a vending-location pipeline, and independent Founders Mode assessments.
+The preserved COO campaign teaches operations, people, customers, execution, and relationships. CEO Campaign I teaches finance, accounting, investing, deals, leadership, systems, and capital allocation. Both tracks use the same learning loop: Teach → Practice → Test → Project → Field → Boss → Reflection.
 
-This repository is intentionally independent. It does not import, call, modify, or require Andrew's Owner Mode or ACMOS.
+This repository remains standalone. It does not import, call, modify, or require a separate Owner Mode repository or ACMOS. Future integration boundaries are documented but not implemented.
 
-## Cloud persistence upgrade
+## Cloud persistence
 
 Operator Mode now uses a layered persistence architecture:
 
@@ -21,12 +21,14 @@ USER ACTION
 
 If the cloud request fails, the local backup and pending idempotency key remain. The application retries when connectivity returns and reports **Offline** or **Sync issue** instead of silently discarding work.
 
-Supabase is authoritative across devices. localStorage is a migration source, device backup, and unsynced-change queue—not the only copy.
+Supabase is authoritative across devices. localStorage is a per-account migration source, device backup, and unsynced-change queue—not the only copy. Existing storage keys remain readable so the V2 upgrade does not strand prior work.
 
 ## Architecture
 
 - **Next.js 16 App Router** handles protected pages, authentication callbacks, and Vercel deployment.
 - **Supabase Auth** provides signup, login, logout, cookie-backed session restoration, email confirmation, and password recovery.
+- **One-time executive roles** are stored on the protected Supabase profile and assigned through an authenticated database function. The UI does not offer casual switching.
+- **Role-aware content and domain services** select the CEO or COO curriculum, XP model, ranks, next actions, achievements, labs, field prompts, and executive scorecard without duplicating the application shell.
 - **Supabase Postgres** stores normalized user-owned records.
 - **Row Level Security** restricts every table to `auth.uid() = user_id`.
 - **`LocalOperatorStateRepository`** maintains immediate per-account backups and reads both legacy storage formats.
@@ -37,12 +39,14 @@ Supabase is authoritative across devices. localStorage is a migration source, de
 The UI does not contain direct table calls. A future backend or ACMOS integration can implement the cloud repository contract without rewriting the lesson engine or operating tools.
 
 The pre-upgrade inventory and migration rationale are in [docs/PERSISTENCE_INVENTORY.md](docs/PERSISTENCE_INVENTORY.md).
+The V2 role, curriculum, and database decisions are in [docs/G_OPS_V2_ARCHITECTURE.md](docs/G_OPS_V2_ARCHITECTURE.md).
 
 ## Persisted data
 
 Cloud persistence covers:
 
 - profile, email-backed account identity, account creation, last login, and preferences
+- executive role, role-selection timestamp, and onboarding completion
 - campaign and active-level state
 - lesson steps, practice/project drafts, knowledge answers, quiz scores, boss decisions, reflections, and completion timestamps
 - deterministic XP, rank, and campaign completion evidence
@@ -54,17 +58,21 @@ Cloud persistence covers:
 - People Lab choices
 - weekly journal entries
 - location pipeline records and stage changes
-- Gabi's independent Founders Mode assessments
+- role-aware, independent Founders Mode assessments
+- private CEO or COO founder-mission analysis, recommendation, decision, reflection, status, and timestamps
 
 XP remains derived from unique durable evidence rather than incremented imperatively. This prevents a retry, double-click, refresh, or second render from double-awarding XP.
 
-## Database schema
+## Database schema and migrations
 
-The committed migration is:
+The migrations must run in timestamp order:
 
 ```text
 supabase/migrations/202608170001_operator_mode_cloud.sql
+supabase/migrations/202608180001_dual_executive_tracks.sql
 ```
+
+The first migration is the unchanged production baseline. The second is additive: it adds executive-role metadata to `profiles`, backfills accounts with an existing training snapshot to COO, creates private `founder_mission_progress`, adds its RLS policies, and adds authenticated role-assignment plus V3 load/save functions. It does not drop, reset, rename, or truncate existing data.
 
 It creates:
 
@@ -84,7 +92,7 @@ It creates:
 - `founders_assessments`
 - `sync_operations`
 
-All tables have stable primary keys, `user_id`, `created_at`, and `updated_at`. Foreign keys cascade when the Supabase Auth user is deliberately deleted. Useful user/date/stage indexes are included.
+All user records have stable primary keys, `user_id`, `created_at`, and `updated_at`. Foreign keys cascade only when the Supabase Auth user is deliberately deleted. Useful user/date/stage indexes are included.
 
 The `save_operator_state` database function converts one typed application snapshot into normalized records in a single Postgres transaction. It uses:
 
@@ -97,23 +105,24 @@ The `load_operator_state` function reconstructs the typed application state from
 
 ## Row Level Security
 
-RLS is enabled on all 15 user-data tables. Each table has separate authenticated `SELECT`, `INSERT`, `UPDATE`, and `DELETE` policies based on:
+RLS is enabled on all 16 user-data tables. Each table has authenticated own-user policies based on:
 
 ```sql
 (select auth.uid()) = user_id
 ```
 
-The publishable browser key is safe only because RLS is enforced. Operator Mode never uses a service-role key in the browser or application runtime.
+Founder-mission inserts and updates also require the row role to match the caller's assigned profile role. The publishable browser key is safe only because RLS is enforced. G-OPS never uses a service-role key in the browser or application runtime.
 
 ## Authentication flow
 
 1. An unauthenticated visitor is redirected to `/login`.
-2. Gabi can create an email/password account or sign in.
+2. Andrew or Gabi can create an email/password account or sign in.
 3. Supabase stores the session in cookies using `@supabase/ssr`.
 4. the Next.js request proxy refreshes and verifies session claims.
 5. the protected home page validates claims and the current user.
 6. Postgres RLS independently authorizes every data operation.
-7. password reset email returns through `/auth/callback` to `/update-password`.
+7. A new account confirms one CEO or COO role; the authenticated database function prevents changing it to the other role.
+8. Password reset email returns through `/auth/callback` to `/update-password`.
 
 Authorization is not based on client-side hiding.
 
@@ -129,6 +138,7 @@ skadra.operator-mode.progress.v1
 Authenticated backups use a new user-specific key. Legacy data is never deleted automatically.
 
 - Legacy-only progress prompts **Import existing progress**.
+- Imported V1/V2 Operator Mode work is assigned to the preserved COO track and skips new-user onboarding; its level IDs and evidence are unchanged.
 - Legacy plus cloud progress shows both timestamps and record counts.
 - **Merge safely** unions stable records, retains the furthest pipeline stage, preserves milestone completion, and chooses newer drafts without discarding non-empty work.
 - Migration is marked complete only after Supabase confirms the transaction.
@@ -144,7 +154,7 @@ Authenticated backups use a new user-specific key. Legacy data is never deleted 
 
 ## Export and recovery
 
-**Settings & Data → Export my data** downloads a portable JSON backup containing account metadata and the complete typed Operator Mode state.
+**Settings & Data → Export my data** downloads a portable JSON backup containing account metadata, executive role, complete lesson/operations state, and founder-mission evidence.
 
 Automatic import is intentionally deferred. A safe future restore must validate the file, compare record timestamps with current cloud data, preview conflicts, and require confirmation before replacing anything newer.
 
@@ -195,6 +205,11 @@ npm run check
 
 Automated tests cover:
 
+- exact CEO and preserved COO 16-level curriculum contracts
+- role routing, role-aware scorecards, next actions, XP, ranks, and achievements
+- legacy COO backfill/import and fresh-account role eligibility
+- founder missions, role-specific responsibilities, merge behavior, and export
+- additive migration, RLS, and one-time-role SQL expectations
 - XP and rank thresholds
 - sequential level/campaign progression
 - no duplicate XP from rerenders
@@ -205,7 +220,7 @@ Automated tests cover:
 - malformed local state recovery
 - version-one state and legacy progress-key migration
 - new-account cloud initialization
-- cloud restoration in a later session
+- cloud restoration—including role and founder work—in a later session
 - offline local fallback
 - retry with the same idempotency key after a lost response
 - optimistic conflict merge
@@ -215,7 +230,7 @@ Real Supabase authentication, RLS, email delivery, cross-device behavior, and Ve
 
 ## Adding or changing curriculum
 
-Curriculum content is separate from UI code under `src/content/levels`.
+Curriculum content is separate from UI code under `src/content/levels`. CEO and COO definitions share the typed `OperatorLevel` contract while retaining distinct stable IDs.
 
 Every campaign, level, knowledge question, boss option, scenario, achievement, and generated user record needs a stable semantic ID. Never use array position as the durable identity.
 
@@ -248,7 +263,7 @@ Before deployment:
 The intended flow remains:
 
 ```text
-CODEX → GITHUB → VERCEL → NORMAL WEB URL → LOGIN → CLOUD PROGRESS
+CODEX → GITHUB → VERCEL → NORMAL WEB URL → LOGIN → ROLE-AWARE CLOUD PROGRESS
 ```
 
 Add both public Supabase environment variables to Vercel Production, Preview, and Development as appropriate, then redeploy. Set the Supabase Auth Site URL and Redirect URLs to the production Vercel domain.

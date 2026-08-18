@@ -12,7 +12,7 @@ function displayNameFromMetadata(metadata: Record<string, unknown>): string {
     ? displayName
     : typeof fullName === "string" && fullName.trim()
       ? fullName
-      : "Gabi";
+      : "Executive";
 }
 
 export default async function Home() {
@@ -21,7 +21,7 @@ export default async function Home() {
       <main className="auth-simple-page">
         <section className="auth-simple-card">
           <span className="kicker">G-OPS / CLOUD SETUP</span>
-          <h1>Operator Mode is ready for Supabase configuration.</h1>
+          <h1>G-OPS is ready for Supabase configuration.</h1>
           <p>
             Follow CLOUD_SETUP.md to create the project, apply the migration,
             and add the required environment variables to this application and

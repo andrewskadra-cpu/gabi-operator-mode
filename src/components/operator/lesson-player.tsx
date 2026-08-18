@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { getLevel, yearOneLevels } from "@/content/levels";
+import type { OperatorLevel } from "@/content/types";
 import type { OperatorStateController } from "@/hooks/use-operator-state";
+import type { ExecutiveRole } from "@/lib/domain/executive-role";
 import { createEmptyLevelProgress } from "@/lib/domain/operator-state";
 import { scoreBossBattle, scoreKnowledgeCheck } from "@/lib/domain/scoring";
 
@@ -10,6 +11,8 @@ interface LessonPlayerProps {
   readonly controller: OperatorStateController;
   readonly levelId: string;
   readonly onBack: () => void;
+  readonly levels: readonly OperatorLevel[];
+  readonly role: ExecutiveRole;
 }
 
 const phases = [
@@ -27,8 +30,10 @@ export function LessonPlayer({
   controller,
   levelId,
   onBack,
+  levels,
+  role,
 }: LessonPlayerProps) {
-  const level = getLevel(levelId);
+  const level = levels.find((item) => item.id === levelId);
   const progress =
     controller.state.levelProgress[levelId] ?? createEmptyLevelProgress();
   const [activeStep, setActiveStep] = useState(() =>
@@ -94,7 +99,7 @@ export function LessonPlayer({
     setCompletionMoment(true);
   };
 
-  const nextLevel = yearOneLevels[level.number];
+  const nextLevel = levels[level.number];
 
   return (
     <main className="lesson-page">
@@ -155,8 +160,8 @@ export function LessonPlayer({
               <h2>{level.missionBrief}</h2>
               <div className="briefing-grid">
                 <article>
-                  <span className="kicker">WHY GABI NEEDS THIS</span>
-                  <p>{level.whyGabiNeedsThis}</p>
+                  <span className="kicker">WHY THIS {role.toUpperCase()} NEEDS THIS</span>
+                  <p>{level.whyExecutiveNeedsThis ?? level.whyGabiNeedsThis}</p>
                 </article>
                 <article>
                   <span className="kicker">MISSION LENGTH</span>
@@ -221,8 +226,8 @@ export function LessonPlayer({
                           <p>{item.example}</p>
                         </div>
                         <div>
-                          <span>HOW GABI USES IT</span>
-                          <p>{item.gabiUse}</p>
+                          <span>HOW THE {role.toUpperCase()} USES IT</span>
+                          <p>{item.roleApplication ?? item.gabiUse}</p>
                         </div>
                         <div className="mistake-box">
                           <span>COMMON MISTAKE</span>

@@ -8,6 +8,8 @@ import {
 } from "@/lib/domain/operator-state";
 import { getPipelineProgress } from "@/lib/domain/pipeline";
 import { getVentureSignal } from "@/lib/domain/scoring";
+import type { ExecutiveRole } from "@/lib/domain/executive-role";
+import { FounderMissionsPanel } from "@/components/operator/founder-missions-panel";
 
 const emptyLocation = {
   company: "",
@@ -33,10 +35,14 @@ const emptyVenture = {
 
 export function VenturesView({
   controller,
+  role,
 }: {
   readonly controller: OperatorStateController;
+  readonly role: ExecutiveRole;
 }) {
-  const [activeTab, setActiveTab] = useState<"pipeline" | "founders">("pipeline");
+  const [activeTab, setActiveTab] = useState<
+    "pipeline" | "founders" | "missions"
+  >(() => (role === "ceo" ? "founders" : "pipeline"));
   const [locationForm, setLocationForm] = useState(emptyLocation);
   const [ventureForm, setVentureForm] = useState(emptyVenture);
   const [showLocationForm, setShowLocationForm] = useState(false);
@@ -58,15 +64,20 @@ export function VenturesView({
     <main className="workspace-page">
       <div className="page-masthead">
         <div>
-          <span className="kicker">VENTURES / OPPORTUNITY OPERATIONS</span>
-          <h2>Build the pipeline. Assess the operation.</h2>
-          <p>Your operating records sync securely. Future founder integration remains a deliberate boundary.</p>
+          <span className="kicker">VENTURES / {role.toUpperCase()} DECISION SYSTEM</span>
+          <h2>
+            {role === "ceo"
+              ? "Underwrite the opportunity. Allocate with discipline."
+              : "Build the pipeline. Assess the operation."}
+          </h2>
+          <p>Your private operating and investment records sync securely. Shared access requires future explicit authorization.</p>
         </div>
       </div>
 
       <div className="tabs" role="tablist">
         <button type="button" className={activeTab === "pipeline" ? "tab tab--active" : "tab"} onClick={() => setActiveTab("pipeline")}>Location Pipeline</button>
         <button type="button" className={activeTab === "founders" ? "tab tab--active" : "tab"} onClick={() => setActiveTab("founders")}>Founders Mode</button>
+        <button type="button" className={activeTab === "missions" ? "tab tab--active" : "tab"} onClick={() => setActiveTab("missions")}>Founder Missions</button>
       </div>
 
       {activeTab === "pipeline" && (
@@ -160,13 +171,18 @@ export function VenturesView({
       {activeTab === "founders" && (
         <div className="founders-layout">
           <section className="founders-brief">
-            <span className="kicker kicker--gold">FUTURE INTEGRATION SEAM</span>
+            <span className="kicker kicker--gold">ROLE-AWARE FOUNDERS MODE</span>
             <h2>Two lenses.<br />One investment decision.</h2>
             <div className="founder-lenses">
               <div><span>ANDREW / CEO</span><strong>Financial attractiveness</strong><p>Price, return, financing, structure, capital allocation.</p></div>
               <div><span>GABI / COO</span><strong>Operational attractiveness</strong><p>People, customers, management, systems, culture, integration.</p></div>
             </div>
-            <p className="founders-boundary">This application does not connect to Andrew&apos;s application. It stores Gabi&apos;s independent operating assessment in Operator Mode through a future-ready SharedVenture record.</p>
+            <p className="founders-boundary">
+              You are completing the {role.toUpperCase()} case. Each account&apos;s
+              analysis remains private. A future investment-committee view must
+              require explicit company membership and authorization before any
+              cross-user combination.
+            </p>
           </section>
 
           <section className="tool-form-card">
@@ -199,6 +215,10 @@ export function VenturesView({
             ))}
           </section>
         </div>
+      )}
+
+      {activeTab === "missions" && (
+        <FounderMissionsPanel controller={controller} role={role} />
       )}
     </main>
   );

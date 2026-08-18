@@ -1,4 +1,5 @@
 import type { OperatorLevel } from "@/content/types";
+import type { ExecutiveRole } from "@/lib/domain/executive-role";
 import type { OperatorState } from "@/lib/domain/operator-state";
 
 export interface Rank {
@@ -13,6 +14,14 @@ export const RANKS: readonly Rank[] = [
   { name: "Operator", minimumXp: 800, nextMinimumXp: 1200 },
   { name: "Team Leader", minimumXp: 1200, nextMinimumXp: 1600 },
   { name: "Business Leader", minimumXp: 1600, nextMinimumXp: null },
+];
+
+export const CEO_RANKS: readonly Rank[] = [
+  { name: "Business Analyst", minimumXp: 0, nextMinimumXp: 550 },
+  { name: "Owner", minimumXp: 550, nextMinimumXp: 1200 },
+  { name: "Investor", minimumXp: 1200, nextMinimumXp: 1900 },
+  { name: "Dealmaker", minimumXp: 1900, nextMinimumXp: 2700 },
+  { name: "Capital Allocator", minimumXp: 2700, nextMinimumXp: null },
 ];
 
 export const PRESTIGE_RANKS = [
@@ -33,8 +42,16 @@ export const XP_VALUES = {
   pipelineStage: 5,
 } as const;
 
-export function getCompletedLevelIds(state: OperatorState): readonly string[] {
+export function getCompletedLevelIds(
+  state: OperatorState,
+  levels?: readonly OperatorLevel[],
+): readonly string[] {
+  const allowedIds = levels
+    ? new Set(levels.map((level) => level.id))
+    : null;
+
   return Object.entries(state.levelProgress)
+    .filter(([levelId]) => allowedIds === null || allowedIds.has(levelId))
     .filter(([, progress]) => progress.completedAt !== null)
     .map(([levelId]) => levelId);
 }
@@ -42,8 +59,9 @@ export function getCompletedLevelIds(state: OperatorState): readonly string[] {
 export function calculateXp(
   state: OperatorState,
   levels: readonly OperatorLevel[],
+  role: ExecutiveRole = state.profile.executiveRole ?? "coo",
 ): number {
-  const completed = new Set(getCompletedLevelIds(state));
+  const completed = new Set(getCompletedLevelIds(state, levels));
   const levelXp = levels
     .filter((level) => completed.has(level.id))
     .reduce((total, level) => total + level.xpReward, 0);
@@ -65,20 +83,31 @@ export function calculateXp(
     return total + Math.max(stageIndex, 0) * XP_VALUES.pipelineStage;
   }, 0);
 
-  return (
+  const roleMultiplier = role === "ceo" ? 1.1 : 1;
+  const operatingEvidenceXp = Math.round(
+    (
     levelXp +
-    state.fieldMissions.length * XP_VALUES.fieldMission +
+    state.fieldMissions.length *
+      (role === "ceo" ? 60 : XP_VALUES.fieldMission) +
     state.relationships.length * XP_VALUES.relationship +
     state.customerAudits.length * XP_VALUES.customerAudit +
     state.processMaps.length * XP_VALUES.processMap +
     state.journalEntries.length * XP_VALUES.journalEntry +
-    state.sharedVentures.length * XP_VALUES.sharedVenture +
+    state.sharedVentures.length *
+      (role === "ceo" ? 40 : XP_VALUES.sharedVenture) +
     pipelineXp
+    ) * roleMultiplier,
   );
+
+  return operatingEvidenceXp + state.founderMissions.filter(
+    (mission) =>
+      mission.executiveRole === role && mission.status === "complete",
+  ).length * 100;
 }
 
-export function getRank(xp: number): Rank {
-  return [...RANKS].reverse().find((rank) => xp >= rank.minimumXp) ?? RANKS[0];
+export function getRank(xp: number, role: ExecutiveRole = "coo"): Rank {
+  const ranks = role === "ceo" ? CEO_RANKS : RANKS;
+  return [...ranks].reverse().find((rank) => xp >= rank.minimumXp) ?? ranks[0];
 }
 
 export function getRankProgress(xp: number, rank: Rank): number {
@@ -124,7 +153,7 @@ export function getCampaignProgress(
   state: OperatorState,
   levels: readonly OperatorLevel[],
 ): number {
-  const completed = getCompletedLevelIds(state).length;
+  const completed = getCompletedLevelIds(state, levels).length;
   return Math.round((completed / levels.length) * 100);
 }
 
@@ -153,4 +182,3 @@ export function getNextActionLabel(state: OperatorState, level: OperatorLevel): 
 
   return "Complete the level";
 }
-

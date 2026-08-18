@@ -11,7 +11,7 @@ export function AuthCard() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [mode, setMode] = useState<AuthMode>("login");
-  const [displayName, setDisplayName] = useState("Gabi");
+  const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -31,7 +31,7 @@ export function AuthCard() {
           email,
           password,
           options: {
-            data: { display_name: displayName.trim() || "Gabi" },
+            data: { display_name: displayName.trim() },
           },
         });
         if (signUpError) {
@@ -71,20 +71,20 @@ export function AuthCard() {
 
   return (
     <main className="auth-page">
-      <section className="auth-brand" aria-label="Skadra Ventures Operator Mode">
+      <section className="auth-brand" aria-label="Skadra Ventures G-OPS">
         <div className="auth-brand__wordmark">
           <span>SV</span>
           <div>
             <strong>SKADRA VENTURES</strong>
-            <small>OPERATOR MODE</small>
+            <small>EXECUTIVE DEVELOPMENT</small>
           </div>
         </div>
         <div>
           <span className="kicker kicker--gold">G-OPS / SECURE ACCESS</span>
-          <h1>Build the operator.<br />Keep the progress.</h1>
+          <h1>Build the executive.<br />Keep the progress.</h1>
           <p>
-            Your training, field work, relationships, journal, and operating
-            assessments follow you securely across devices.
+            CEO and COO training, field work, decisions, relationships, and
+            assessments follow each account securely across devices.
           </p>
         </div>
         <div className="auth-brand__principles">
@@ -97,8 +97,8 @@ export function AuthCard() {
 
       <section className="auth-panel">
         <div className="auth-panel__inner">
-          <span className="kicker">GABI OPERATIONS COMMAND SYSTEM</span>
-          <h2>{mode === "login" ? "Welcome back." : "Create your operator account."}</h2>
+          <span className="kicker">SKADRA VENTURES · G-OPS</span>
+          <h2>{mode === "login" ? "Welcome back." : "Create your executive account."}</h2>
           <p>
             {mode === "login"
               ? "Sign in to load your cloud-backed command center."

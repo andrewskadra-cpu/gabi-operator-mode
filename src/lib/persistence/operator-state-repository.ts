@@ -34,10 +34,16 @@ export interface LocalStateRepository {
 export class LocalOperatorStateRepository implements LocalStateRepository {
   private readonly storage?: StorageAdapter;
   private readonly userId?: string;
+  private readonly initialStateFactory: () => OperatorState;
 
-  constructor(storage?: StorageAdapter, userId?: string) {
+  constructor(
+    storage?: StorageAdapter,
+    userId?: string,
+    initialStateFactory: () => OperatorState = createInitialOperatorState,
+  ) {
     this.storage = storage;
     this.userId = userId;
+    this.initialStateFactory = initialStateFactory;
   }
 
   private getStorage(): StorageAdapter | undefined {
@@ -69,7 +75,7 @@ export class LocalOperatorStateRepository implements LocalStateRepository {
   }
 
   load(): OperatorState {
-    return this.readKey(this.storageKey) ?? createInitialOperatorState();
+    return this.readKey(this.storageKey) ?? this.initialStateFactory();
   }
 
   loadStored(): OperatorState | null {
@@ -91,7 +97,12 @@ export class LocalOperatorStateRepository implements LocalStateRepository {
         return operatorState;
       }
 
-      const initial = createInitialOperatorState();
+      const initial = createInitialOperatorState({
+        title: "Future Vice President / COO",
+        executiveRole: "coo",
+        roleSelectedAt: parsed.updatedAt,
+        onboardingCompletedAt: parsed.updatedAt,
+      });
       const completedAt = parsed.updatedAt;
       return {
         ...initial,

@@ -6,6 +6,9 @@ import {
   type AppView,
   type CustomerExperienceAudit,
   type FieldMissionLog,
+  type FounderDecision,
+  type FounderMissionProgress,
+  type FounderMissionStatus,
   type JournalEntry,
   type LevelProgress,
   type LocationOpportunity,
@@ -16,6 +19,10 @@ import {
   type Relationship,
   type SharedVenture,
 } from "../domain/operator-state.ts";
+import {
+  isExecutiveRole,
+  type ExecutiveRole,
+} from "../domain/executive-role.ts";
 
 const APP_VIEWS: readonly AppView[] = [
   "command",
@@ -26,6 +33,21 @@ const APP_VIEWS: readonly AppView[] = [
   "journal",
   "ventures",
   "settings",
+];
+
+const FOUNDER_MISSION_STATUSES: readonly FounderMissionStatus[] = [
+  "not-started",
+  "in-progress",
+  "ready-for-decision",
+  "complete",
+];
+
+const FOUNDER_DECISIONS: readonly Exclude<FounderDecision, null>[] = [
+  "deploy",
+  "renegotiate",
+  "buy",
+  "pass",
+  "hold",
 ];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -285,6 +307,45 @@ function normalizePeopleLabSession(
   };
 }
 
+function normalizeFounderMission(
+  value: unknown,
+  updatedAt: string,
+): FounderMissionProgress | null {
+  const record = normalizeTimestampedRecord(value, updatedAt);
+  if (
+    !record ||
+    typeof record.missionId !== "string" ||
+    !isExecutiveRole(record.executiveRole)
+  ) {
+    return null;
+  }
+
+  const status = FOUNDER_MISSION_STATUSES.includes(
+    record.status as FounderMissionStatus,
+  )
+    ? (record.status as FounderMissionStatus)
+    : "in-progress";
+  const decision = FOUNDER_DECISIONS.includes(
+    record.decision as Exclude<FounderDecision, null>,
+  )
+    ? (record.decision as Exclude<FounderDecision, null>)
+    : null;
+
+  return {
+    id: record.id,
+    missionId: record.missionId,
+    executiveRole: record.executiveRole,
+    status,
+    analysis: stringValue(record.analysis),
+    recommendation: stringValue(record.recommendation),
+    decision,
+    reflection: stringValue(record.reflection),
+    completedAt: nullableString(record.completedAt),
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
+  };
+}
+
 function normalizedArray<T>(
   value: unknown,
   normalize: (item: unknown) => T | null,
@@ -295,7 +356,12 @@ function normalizedArray<T>(
 }
 
 export function parseOperatorState(value: unknown): OperatorState | null {
-  if (!isRecord(value) || (value.version !== 1 && value.version !== OPERATOR_STATE_VERSION)) {
+  if (
+    !isRecord(value) ||
+    (value.version !== 1 &&
+      value.version !== 2 &&
+      value.version !== OPERATOR_STATE_VERSION)
+  ) {
     return null;
   }
 
@@ -326,12 +392,49 @@ export function parseOperatorState(value: unknown): OperatorState | null {
       ] as const)
       .filter((entry): entry is readonly [string, LevelProgress] => entry[1] !== null),
   );
+  const hasLegacyOperatorEvidence =
+    value.version !== OPERATOR_STATE_VERSION &&
+    (Object.keys(levelProgress).length > 0 ||
+      value.profile !== undefined ||
+      [
+        value.fieldMissions,
+        value.relationships,
+        value.customerAudits,
+        value.processMaps,
+        value.journalEntries,
+        value.locations,
+        value.sharedVentures,
+      ].some((records) => Array.isArray(records) && records.length > 0));
+  const executiveRole: ExecutiveRole | null = isExecutiveRole(
+    profile.executiveRole,
+  )
+    ? profile.executiveRole
+    : hasLegacyOperatorEvidence
+      ? "coo"
+      : null;
+  const roleSelectedAt = executiveRole
+    ? typeof profile.roleSelectedAt === "string"
+      ? timestampValue(profile.roleSelectedAt, createdAt)
+      : hasLegacyOperatorEvidence
+        ? createdAt
+        : null
+    : null;
+  const onboardingCompletedAt = executiveRole
+    ? typeof profile.onboardingCompletedAt === "string"
+      ? timestampValue(profile.onboardingCompletedAt, updatedAt)
+      : hasLegacyOperatorEvidence
+        ? updatedAt
+        : null
+    : null;
 
   return {
     version: OPERATOR_STATE_VERSION,
     profile: {
       name: stringValue(profile.name, initial.profile.name),
       title: stringValue(profile.title, initial.profile.title),
+      executiveRole,
+      roleSelectedAt,
+      onboardingCompletedAt,
     },
     currentCampaignId: stringValue(
       value.currentCampaignId,
@@ -366,6 +469,9 @@ export function parseOperatorState(value: unknown): OperatorState | null {
     peopleLabSessions: normalizedArray(value.peopleLabSessions, (item) =>
       normalizePeopleLabSession(item, updatedAt),
     ),
+    founderMissions: normalizedArray(value.founderMissions, (item) =>
+      normalizeFounderMission(item, updatedAt),
+    ),
     achievementUnlocks: stringRecord(value.achievementUnlocks),
     preferences: {
       reducedMotion:
@@ -395,9 +501,11 @@ export function isMeaningfulOperatorState(state: OperatorState): boolean {
     state.locations.length > 0 ||
     state.sharedVentures.length > 0 ||
     state.peopleLabSessions.length > 0 ||
+    state.founderMissions.length > 0 ||
     Object.keys(state.achievementUnlocks).length > 0 ||
     state.activeLevelId !== initial.activeLevelId ||
     state.profile.name !== initial.profile.name ||
     state.profile.title !== initial.profile.title
+    || state.profile.executiveRole !== null
   );
 }

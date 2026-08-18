@@ -1,4 +1,6 @@
-export const OPERATOR_STATE_VERSION = 2 as const;
+import type { ExecutiveRole } from "./executive-role.ts";
+
+export const OPERATOR_STATE_VERSION = 3 as const;
 
 export type AppView =
   | "command"
@@ -156,6 +158,34 @@ export interface PeopleLabSession {
   readonly updatedAt: string;
 }
 
+export type FounderMissionStatus =
+  | "not-started"
+  | "in-progress"
+  | "ready-for-decision"
+  | "complete";
+
+export type FounderDecision =
+  | "deploy"
+  | "renegotiate"
+  | "buy"
+  | "pass"
+  | "hold"
+  | null;
+
+export interface FounderMissionProgress {
+  readonly id: string;
+  readonly missionId: string;
+  readonly executiveRole: ExecutiveRole;
+  readonly status: FounderMissionStatus;
+  readonly analysis: string;
+  readonly recommendation: string;
+  readonly decision: FounderDecision;
+  readonly reflection: string;
+  readonly completedAt: string | null;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
 export interface OperatorPreferences {
   readonly reducedMotion: boolean;
   readonly compactMode: boolean;
@@ -166,6 +196,9 @@ export interface OperatorState {
   readonly profile: {
     readonly name: string;
     readonly title: string;
+    readonly executiveRole: ExecutiveRole | null;
+    readonly roleSelectedAt: string | null;
+    readonly onboardingCompletedAt: string | null;
   };
   readonly currentCampaignId: string;
   readonly lastView: AppView;
@@ -179,6 +212,7 @@ export interface OperatorState {
   readonly locations: readonly LocationOpportunity[];
   readonly sharedVentures: readonly SharedVenture[];
   readonly peopleLabSessions: readonly PeopleLabSession[];
+  readonly founderMissions: readonly FounderMissionProgress[];
   readonly achievementUnlocks: Readonly<Record<string, string>>;
   readonly preferences: OperatorPreferences;
   readonly createdAt: string;
@@ -202,14 +236,20 @@ export function createEmptyLevelProgress(
   };
 }
 
-export function createInitialOperatorState(): OperatorState {
+export function createInitialOperatorState(
+  profile?: Partial<OperatorState["profile"]>,
+): OperatorState {
   const now = new Date().toISOString();
 
   return {
     version: OPERATOR_STATE_VERSION,
     profile: {
       name: "Gabi",
-      title: "Future Vice President / COO",
+      title: "Executive in Training",
+      executiveRole: null,
+      roleSelectedAt: null,
+      onboardingCompletedAt: null,
+      ...profile,
     },
     currentCampaignId: "year-one-core-operator",
     lastView: "command",
@@ -223,6 +263,7 @@ export function createInitialOperatorState(): OperatorState {
     locations: [],
     sharedVentures: [],
     peopleLabSessions: [],
+    founderMissions: [],
     achievementUnlocks: {},
     preferences: {
       reducedMotion: false,

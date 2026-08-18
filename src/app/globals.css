@@ -3571,8 +3571,437 @@ summary:focus-visible {
   color: var(--ink);
 }
 
+.operator-shell--ceo .sidebar {
+  background:
+    linear-gradient(180deg, rgba(197, 161, 93, 0.14), transparent 42%),
+    var(--navy);
+}
+
+.operator-shell--coo .sidebar {
+  background:
+    linear-gradient(180deg, rgba(38, 75, 100, 0.15), transparent 42%),
+    var(--navy);
+}
+
+.role-selection-page,
+.executive-onboarding {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: clamp(1.5rem, 5vw, 5rem);
+  background:
+    radial-gradient(circle at 78% 14%, rgba(45, 111, 159, 0.18), transparent 32%),
+    var(--paper);
+}
+
+.role-selection-shell {
+  width: min(72rem, 100%);
+}
+
+.role-selection-header {
+  max-width: 53rem;
+}
+
+.role-selection-header h1,
+.executive-onboarding h1 {
+  margin: 0.8rem 0 1rem;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(3rem, 7vw, 6.5rem);
+  font-weight: 400;
+  letter-spacing: -0.055em;
+  line-height: 0.92;
+}
+
+.role-selection-header > p,
+.executive-onboarding__lede,
+.executive-onboarding__closing {
+  max-width: 48rem;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.role-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 3rem;
+}
+
+.role-choice {
+  min-height: 21rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: clamp(1.5rem, 4vw, 3rem);
+  border: 1px solid var(--line);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  text-align: left;
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.role-choice:hover,
+.role-choice:focus-visible {
+  transform: translateY(-0.3rem);
+  border-color: var(--gold);
+  box-shadow: 0 24px 70px rgba(10, 20, 28, 0.14);
+}
+
+.role-choice--ceo {
+  background:
+    linear-gradient(150deg, rgba(197, 161, 93, 0.12), transparent 48%),
+    var(--panel);
+}
+
+.role-choice--coo {
+  background:
+    linear-gradient(150deg, rgba(45, 111, 159, 0.1), transparent 48%),
+    var(--panel);
+}
+
+.role-choice__code,
+.role-choice__action {
+  color: var(--gold);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+}
+
+.role-choice strong {
+  margin-top: 3rem;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  font-weight: 400;
+  letter-spacing: -0.04em;
+}
+
+.role-choice p {
+  max-width: 31rem;
+  margin: 0.8rem 0 2rem;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.role-choice__action {
+  margin-top: auto;
+}
+
+.role-confirmation {
+  margin-top: 1rem;
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+  border-left: 3px solid var(--gold);
+  background: var(--white);
+  box-shadow: var(--shadow);
+}
+
+.role-confirmation h2 {
+  margin: 0.6rem 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 2.1rem;
+  font-weight: 400;
+}
+
+.role-confirmation > p:not(.auth-message) {
+  max-width: 54rem;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.executive-onboarding {
+  background:
+    radial-gradient(circle at 75% 20%, rgba(45, 111, 159, 0.24), transparent 34%),
+    var(--navy);
+  color: var(--ivory);
+}
+
+.executive-onboarding--ceo {
+  background:
+    radial-gradient(circle at 75% 20%, rgba(197, 161, 93, 0.22), transparent 34%),
+    var(--navy);
+}
+
+.executive-onboarding > section {
+  width: min(62rem, 100%);
+}
+
+.executive-onboarding__name {
+  margin: 3.5rem 0 0;
+  color: var(--muted-light);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.executive-onboarding__lede,
+.executive-onboarding__closing {
+  color: #b7c0c5;
+}
+
+.executive-onboarding ul {
+  max-width: 52rem;
+  display: grid;
+  gap: 0.7rem;
+  margin: 2rem 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: onboarding;
+}
+
+.executive-onboarding li {
+  display: grid;
+  grid-template-columns: 2.6rem 1fr;
+  align-items: baseline;
+  padding-bottom: 0.7rem;
+  border-bottom: 1px solid var(--dark-line);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.3rem, 3vw, 2.1rem);
+  counter-increment: onboarding;
+}
+
+.executive-onboarding li::before {
+  content: "0" counter(onboarding);
+  color: var(--gold);
+  font-family: "Aptos", "Segoe UI", Arial, sans-serif;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.executive-onboarding .primary-button {
+  margin-top: 1.2rem;
+}
+
+.executive-scorecard {
+  grid-column: span 2;
+}
+
+.executive-scorecard__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1.3rem;
+}
+
+.executive-scorecard__grid > div {
+  display: grid;
+  gap: 0.45rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.executive-scorecard__grid span,
+.executive-scorecard__grid small {
+  color: var(--muted);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.executive-scorecard__grid strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 2rem;
+  font-weight: 400;
+}
+
+.executive-scorecard__grid div > div {
+  height: 0.3rem;
+  overflow: hidden;
+  background: var(--line);
+}
+
+.executive-scorecard__grid i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold), #dfc68e);
+}
+
+.executive-roadmap-section,
+.founder-missions-panel {
+  margin-top: 5rem;
+}
+
+.executive-roadmap-track {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin-top: 2rem;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.executive-roadmap-track > div {
+  min-height: 8.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.2rem;
+  border-right: 1px solid var(--line);
+}
+
+.executive-roadmap-track > div:nth-child(5) {
+  border-right: 0;
+}
+
+.executive-roadmap-track span {
+  color: var(--gold);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.executive-roadmap-track strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.1rem;
+  font-weight: 400;
+}
+
+.executive-roadmap-track__convergence {
+  min-height: auto !important;
+  grid-column: 1 / -1;
+  display: grid !important;
+  grid-template-columns: auto 1fr;
+  justify-content: start !important;
+  border-top: 1px solid var(--gold);
+  border-right: 0 !important;
+  background: var(--navy);
+  color: var(--ivory);
+}
+
+.founder-mission-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.founder-mission-card {
+  align-self: start;
+  padding: clamp(1.3rem, 3vw, 2rem);
+  border: 1px solid var(--line);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.founder-mission-card--active {
+  border-color: var(--gold);
+}
+
+.founder-mission-card__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.founder-mission-card__head span:last-child {
+  color: var(--gold);
+}
+
+.founder-mission-card h3 {
+  margin: 1.2rem 0 0.6rem;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 2rem;
+  font-weight: 400;
+  letter-spacing: -0.035em;
+}
+
+.founder-mission-card > p,
+.founder-mission-role-brief li {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.founder-mission-role-brief {
+  margin: 1.5rem 0;
+  padding: 1.2rem;
+  border-left: 3px solid var(--gold);
+  background: var(--white);
+}
+
+.founder-mission-role-brief > span,
+.founder-decision-options legend {
+  color: var(--gold);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.founder-mission-role-brief strong {
+  display: block;
+  margin-top: 0.5rem;
+  line-height: 1.5;
+}
+
+.founder-mission-role-brief ul {
+  margin-bottom: 0;
+  padding-left: 1.1rem;
+}
+
+.founder-mission-form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
+}
+
+.founder-decision-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.founder-decision-options legend {
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+.founder-decision-options label {
+  position: relative;
+}
+
+.founder-decision-options input {
+  position: absolute;
+  opacity: 0;
+}
+
+.founder-decision-options span {
+  display: block;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--line);
+  background: var(--white);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.founder-decision-options input:checked + span {
+  border-color: var(--gold);
+  background: var(--gold-pale);
+}
+
+.founder-decision-options input:focus-visible + span {
+  outline: 3px solid rgba(45, 111, 159, 0.32);
+  outline-offset: 3px;
+}
+
 @media (max-width: 1000px) {
   .mobile-sync { display: inline; }
+  .executive-roadmap-track { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .executive-roadmap-track > div { border-bottom: 1px solid var(--line); }
+  .executive-roadmap-track > div:nth-child(5) { border-right: 1px solid var(--line); }
 }
 
 @media (max-width: 840px) {
@@ -3583,6 +4012,10 @@ summary:focus-visible {
   .auth-panel { min-height: 58vh; padding: 3rem 1.4rem; }
   .settings-grid { grid-template-columns: 1fr; }
   .settings-card--wide { grid-column: auto; }
+  .role-choice-grid,
+  .founder-mission-grid { grid-template-columns: 1fr; }
+  .executive-scorecard { grid-column: auto; }
+  .executive-scorecard__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 560px) {
@@ -3592,4 +4025,12 @@ summary:focus-visible {
   .migration-actions > * { width: 100%; justify-content: center; }
   .settings-actions { align-items: flex-start; flex-direction: column; }
   .mobile-sync { display: none; }
+  .role-selection-page,
+  .executive-onboarding { padding: 1.5rem 1rem; }
+  .role-choice { min-height: 17rem; }
+  .executive-scorecard__grid,
+  .executive-roadmap-track { grid-template-columns: 1fr; }
+  .executive-roadmap-track > div { border-right: 0; }
+  .executive-roadmap-track__convergence { grid-template-columns: 1fr; }
+  .founder-decision-options { display: grid; }
 }

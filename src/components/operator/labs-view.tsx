@@ -3,7 +3,9 @@
 import { useState, type FormEvent } from "react";
 import type { OperatorStateController } from "@/hooks/use-operator-state";
 import type { CustomerExperienceMetric } from "@/lib/domain/operator-state";
+import type { ExecutiveRole } from "@/lib/domain/executive-role";
 import { averageScore } from "@/lib/domain/scoring";
+import { roleLabLenses } from "@/content/executive-tracks";
 
 const metricLabels: Readonly<Record<CustomerExperienceMetric, string>> = {
   greeting: "Greeting",
@@ -106,10 +108,51 @@ const peopleScenarios = [
   },
 ] as const;
 
+const ceoPeopleScenarios = [
+  {
+    id: "ceo-controller-hire",
+    category: "EXECUTIVE HIRING",
+    title: "The first finance leader",
+    scenario:
+      "Skadra's reporting is late and Andrew owns every model. A strong controller candidate costs more than budget, while a cheaper candidate needs substantial development.",
+    choices: [
+      { id: "a", label: "Hire the cheaper candidate and keep reviewing every detail.", feedback: "This protects near-term cash but may preserve the CEO bottleneck and weak controls." },
+      { id: "b", label: "Define the outcomes, quantify the cost of weak reporting, assess both candidates against the role, and stage the investment if needed.", feedback: "This connects talent cost to decision quality, capacity, controls, and a measurable transition." },
+      { id: "c", label: "Hire the strongest candidate immediately because finance is critical.", feedback: "The capability may be right, but the decision still needs role scope, economics, references, and success measures." },
+    ],
+  },
+  {
+    id: "ceo-manager-performance",
+    category: "MANAGING MANAGERS",
+    title: "The results-only manager",
+    scenario:
+      "A portfolio manager hits profit targets while turnover, customer complaints, and control exceptions rise. Replacing the manager could disrupt the year.",
+    choices: [
+      { id: "a", label: "Keep the manager because profit is the CEO's primary score.", feedback: "Current earnings may be consuming future capability, trust, and control quality." },
+      { id: "b", label: "Set a time-bound improvement plan across financial and operating evidence, protect customers and staff, and prepare a succession option.", feedback: "This preserves accountability without pretending the transition risk is zero." },
+      { id: "c", label: "Replace the manager immediately to signal culture matters.", feedback: "Urgency may be warranted, but succession capacity and verified facts still matter." },
+    ],
+  },
+  {
+    id: "ceo-capital-conflict",
+    category: "CAPITAL CONFLICT",
+    title: "The two credible proposals",
+    scenario:
+      "The COO recommends a systems hire to protect execution. The acquisition pipeline needs the same cash for a deposit. Both cases are credible and time-sensitive.",
+    choices: [
+      { id: "a", label: "Fund the acquisition because deals create growth.", feedback: "This may underprice the operating capacity needed to integrate and compound the asset." },
+      { id: "b", label: "Compare return, downside, reversibility, capacity, and staged options with the COO, then make and document the allocation.", feedback: "This treats operating capacity and deal opportunity as parts of one capital system." },
+      { id: "c", label: "Split the cash evenly to preserve the partnership.", feedback: "Fairness is not necessarily an economically coherent allocation." },
+    ],
+  },
+] as const;
+
 export function LabsView({
   controller,
+  role,
 }: {
   readonly controller: OperatorStateController;
+  readonly role: ExecutiveRole;
 }) {
   const [activeLab, setActiveLab] = useState<"cx" | "operations" | "people">("cx");
   const [cxForm, setCxForm] = useState({
@@ -131,6 +174,9 @@ export function LabsView({
     owner: "",
     improvement: "",
   });
+  const lens = roleLabLenses[role];
+  const activePeopleScenarios =
+    role === "ceo" ? ceoPeopleScenarios : peopleScenarios;
 
   const saveAudit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -172,9 +218,9 @@ export function LabsView({
     <main className="workspace-page">
       <div className="page-masthead">
         <div>
-          <span className="kicker">OPERATOR LABS / PRACTICE SYSTEMS</span>
-          <h2>Train the operating eye.</h2>
-          <p>Observe experience. Map the machine. Lead through ambiguity.</p>
+          <span className="kicker">{lens.eyebrow}</span>
+          <h2>{lens.title}</h2>
+          <p>{lens.description}</p>
         </div>
       </div>
 
@@ -203,6 +249,7 @@ export function LabsView({
             <div className="tool-form-card__head">
               <span className="kicker kicker--gold">CUSTOMER EXPERIENCE AUDIT</span>
               <h3>Score what the customer actually experiences.</h3>
+              <p>{lens.customerPrompt}</p>
             </div>
             <form className="form-grid" onSubmit={saveAudit}>
               <label className="field-group">
@@ -274,6 +321,7 @@ export function LabsView({
             <div className="tool-form-card__head">
               <span className="kicker kicker--gold">PROCESS MAPPER</span>
               <h3>Make the invisible operating system visible.</h3>
+              <p>{lens.operationsPrompt}</p>
             </div>
             <form className="form-grid" onSubmit={saveProcess}>
               <label className="field-group field-group--wide"><span>PROCESS NAME</span><input required value={processForm.name} onChange={(event) => setProcessForm((current) => ({ ...current, name: event.target.value }))} placeholder="Example: Restock a vending machine" /></label>
@@ -328,7 +376,7 @@ export function LabsView({
             <p>Choose, then inspect the tradeoff and consequence.</p>
           </div>
           <div className="people-scenarios">
-            {peopleScenarios.map((scenario, scenarioIndex) => {
+            {activePeopleScenarios.map((scenario, scenarioIndex) => {
               const answer = controller.state.peopleLabSessions.find(
                 (session) => session.scenarioId === scenario.id,
               )?.choiceId;

@@ -1,3 +1,5 @@
+import type { ExecutiveRole } from "@/lib/domain/executive-role";
+
 export const fieldMissionTemplates = [
   "Speak with a business owner",
   "Approach a vending location",
@@ -10,6 +12,29 @@ export const fieldMissionTemplates = [
   "Visit a manufacturing facility",
   "Talk with a nonprofit leader",
 ] as const;
+
+export const ceoFieldMissionTemplates = [
+  "Analyze a company's financial statements",
+  "Build a profit and loss statement",
+  "Evaluate a vending machine investment",
+  "Interview a business owner about cash flow",
+  "Talk with a commercial or SBA lender",
+  "Analyze a business-for-sale listing",
+  "Underwrite a real estate opportunity",
+  "Build an investment memo",
+  "Compare financing structures",
+  "Analyze an operating process financially",
+  "Build an executive dashboard",
+  "Evaluate a capital expenditure",
+  "Talk to a CPA or controller",
+  "Talk to an acquisition entrepreneur",
+] as const;
+
+export function getFieldMissionTemplates(
+  role: ExecutiveRole,
+): readonly string[] {
+  return role === "ceo" ? ceoFieldMissionTemplates : fieldMissionTemplates;
+}
 
 export const relationshipCategories = [
   "Owner",
@@ -39,4 +64,3 @@ export const journalPrompts = [
   "What employee behavior would I reward?",
   "What would I change as COO?",
 ] as const;
-

@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test": "node --test --experimental-strip-types src/lib/domain/progression.test.ts src/lib/domain/scoring.test.ts src/lib/domain/pipeline.test.ts src/lib/domain/achievements.test.ts src/lib/persistence/operator-state-codec.test.ts src/lib/persistence/operator-state-merge.test.ts src/lib/persistence/operator-state-repository.test.ts src/lib/persistence/operator-state-sync-engine.test.ts",
+    "test": "node --test --experimental-strip-types src/lib/domain/progression.test.ts src/lib/domain/scoring.test.ts src/lib/domain/pipeline.test.ts src/lib/domain/achievements.test.ts src/lib/domain/executive-tracks.test.ts src/lib/domain/data-export.test.ts src/lib/persistence/operator-state-codec.test.ts src/lib/persistence/operator-state-merge.test.ts src/lib/persistence/operator-state-repository.test.ts src/lib/persistence/operator-state-sync-engine.test.ts src/lib/persistence/supabase-executive-profile-repository.test.ts src/lib/persistence/dual-executive-migration.test.ts",
     "typecheck": "tsc --noEmit",
     "check": "npm run lint && npm run typecheck && npm run test && npm run build"
   },

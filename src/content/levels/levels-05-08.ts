@@ -1,4 +1,4 @@
-import { bossOptions, concept, defineLevel, question } from "@/content/levels/helpers";
+import { bossOptions, concept, defineLevel, question } from "./helpers.ts";
 
 export const levels05To08 = [
   defineLevel({
@@ -430,4 +430,3 @@ export const levels05To08 = [
     reflectionPrompt: "Think of a service failure you remember. What made the recovery build or lose trust?",
   }),
 ] as const;
-

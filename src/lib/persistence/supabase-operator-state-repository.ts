@@ -73,7 +73,7 @@ export class SupabaseOperatorStateRepository
   }
 
   async load(): Promise<CloudStateSnapshot> {
-    const { data, error } = await this.client.rpc("load_operator_state");
+    const { data, error } = await this.client.rpc("load_executive_state");
 
     if (error) {
       throw new Error(`Unable to load cloud progress: ${error.message}`);
@@ -87,7 +87,7 @@ export class SupabaseOperatorStateRepository
     expectedRevision: number,
     requestId: string,
   ): Promise<CloudSaveResult> {
-    const { data, error } = await this.client.rpc("save_operator_state", {
+    const { data, error } = await this.client.rpc("save_executive_state", {
       p_state: toJson(state),
       p_expected_revision: expectedRevision,
       p_request_id: requestId,

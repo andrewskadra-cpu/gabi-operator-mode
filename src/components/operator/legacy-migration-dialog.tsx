@@ -13,7 +13,8 @@ function recordCount(state: OperatorStateController["state"]): number {
     state.journalEntries.length +
     state.locations.length +
     state.sharedVentures.length +
-    state.peopleLabSessions.length
+    state.peopleLabSessions.length +
+    state.founderMissions.length
   );
 }
 

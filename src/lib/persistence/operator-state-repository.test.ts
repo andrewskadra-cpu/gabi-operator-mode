@@ -55,7 +55,7 @@ test("invalid stored data fails safely to a fresh state", () => {
   storage.setItem("skadra.operator-mode.state.v1", "{not valid json");
   const repository = new LocalOperatorStateRepository(storage);
 
-  assert.equal(repository.load().version, 2);
+  assert.equal(repository.load().version, 3);
   assert.equal(repository.load().activeLevelId, "follow-the-money");
 });
 
@@ -177,4 +177,19 @@ test("the older training-progress key remains a migration source", () => {
     legacy.levelProgress["follow-the-money"].completedAt,
     "2026-05-01T12:00:00.000Z",
   );
+  assert.equal(legacy.profile.executiveRole, "coo");
+  assert.equal(legacy.profile.onboardingCompletedAt, "2026-05-01T12:00:00.000Z");
+});
+
+test("the account factory avoids assigning a role or another user's identity", () => {
+  const storage = new MemoryStorage();
+  const repository = new LocalOperatorStateRepository(
+    storage,
+    "andrew-user",
+    () => createInitialOperatorState({ name: "Andrew" }),
+  );
+
+  const state = repository.load();
+  assert.equal(state.profile.name, "Andrew");
+  assert.equal(state.profile.executiveRole, null);
 });

@@ -2,11 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import type {
   OperatorAccount,
   OperatorStateController,
 } from "@/hooks/use-operator-state";
 import { createClient } from "@/lib/supabase/client";
+import { createExecutiveDataExport } from "@/lib/domain/data-export";
+import { getExecutiveRoleDefinition } from "@/lib/domain/executive-role";
 
 interface SettingsViewProps {
   readonly account: OperatorAccount;
@@ -26,26 +29,18 @@ export function SettingsView({ account, controller }: SettingsViewProps) {
   const router = useRouter();
   const [exported, setExported] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const role = controller.state.profile.executiveRole;
+  const roleDefinition = role ? getExecutiveRoleDefinition(role) : null;
 
   const exportData = () => {
-    const payload = {
-      format: "skadra-operator-mode-backup",
-      formatVersion: 1,
-      exportedAt: new Date().toISOString(),
-      account: {
-        id: account.id,
-        email: account.email,
-        displayName: account.displayName,
-      },
-      operatorState: controller.state,
-    };
+    const payload = createExecutiveDataExport(account, controller.state);
     const blob = new Blob([JSON.stringify(payload, null, 2)], {
       type: "application/json",
     });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `g-ops-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    link.download = `g-ops-${role ?? "executive"}-backup-${new Date().toISOString().slice(0, 10)}.json`;
     link.click();
     URL.revokeObjectURL(url);
     setExported(true);
@@ -65,7 +60,7 @@ export function SettingsView({ account, controller }: SettingsViewProps) {
         <div>
           <span className="kicker">SETTINGS / DATA COMMAND</span>
           <h2>Your account. Your operating record.</h2>
-          <p>Review cloud status, keep a portable backup, and manage access.</p>
+          <p>Review your role, cloud status, portable backup, and account access.</p>
         </div>
       </div>
 
@@ -82,6 +77,20 @@ export function SettingsView({ account, controller }: SettingsViewProps) {
               <p>{account.email}</p>
             </div>
           </div>
+          <dl className="settings-details">
+            <div>
+              <dt>Executive role</dt>
+              <dd>{roleDefinition?.label ?? "Not selected"}</dd>
+            </div>
+            <div>
+              <dt>Training profile</dt>
+              <dd>{roleDefinition?.campaignName ?? "Awaiting role selection"}</dd>
+            </div>
+          </dl>
+          <p className="settings-note">
+            The primary role is account-level and cannot be casually switched.
+            A future controlled change would preserve all existing progress.
+          </p>
           <button
             className="secondary-button"
             type="button"
@@ -90,6 +99,9 @@ export function SettingsView({ account, controller }: SettingsViewProps) {
           >
             {loggingOut ? "SIGNING OUT..." : "LOG OUT"}
           </button>
+          <Link className="auth-link" href="/forgot-password">
+            Reset password
+          </Link>
         </section>
 
         <section className="card settings-card">
@@ -109,6 +121,8 @@ export function SettingsView({ account, controller }: SettingsViewProps) {
           <dl className="settings-details">
             <div><dt>Last successful sync</dt><dd>{formatTimestamp(controller.syncStatus.lastSuccessfulSyncAt)}</dd></div>
             <div><dt>Local backup</dt><dd>Active on this device</dd></div>
+            <div><dt>State format</dt><dd>G-OPS V{controller.state.version}</dd></div>
+            <div><dt>Role migration</dt><dd>{role ? "Complete" : "Pending selection"}</dd></div>
           </dl>
           {controller.syncStatus.message && <p className="settings-note">{controller.syncStatus.message}</p>}
           {(controller.syncStatus.phase === "offline" || controller.syncStatus.phase === "issue") && (
@@ -123,11 +137,12 @@ export function SettingsView({ account, controller }: SettingsViewProps) {
             <span className="kicker">PORTABLE BACKUP</span>
             <span className="card__code">JSON</span>
           </div>
-          <h3>Export my Operator Mode data</h3>
+          <h3>Export my G-OPS data</h3>
           <p>
             Download a readable backup containing your training progress,
             projects, missions, network, labs, journal, pipeline, achievements,
-            preferences, and Founders Mode assessments.
+            preferences, executive role, role-specific curriculum, Founder
+            Missions, and Founders Mode assessments.
           </p>
           <div className="settings-actions">
             <button className="primary-button" type="button" onClick={exportData}>

@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { fieldMissionTemplates } from "@/content/field-mission-templates";
+import { getFieldMissionTemplates } from "@/content/field-mission-templates";
 import type { OperatorStateController } from "@/hooks/use-operator-state";
+import type { ExecutiveRole } from "@/lib/domain/executive-role";
 
-const emptyForm = {
-  template: fieldMissionTemplates[0] as string,
+function emptyForm(role: ExecutiveRole) {
+  return {
+  template: getFieldMissionTemplates(role)[0] as string,
   date: "",
   person: "",
   place: "",
@@ -15,20 +17,24 @@ const emptyForm = {
   wentWell: "",
   changeNextTime: "",
   followUp: "",
-};
+  };
+}
 
 export function FieldOpsView({
   controller,
+  role,
 }: {
   readonly controller: OperatorStateController;
+  readonly role: ExecutiveRole;
 }) {
-  const [form, setForm] = useState(emptyForm);
+  const templates = getFieldMissionTemplates(role);
+  const [form, setForm] = useState(() => emptyForm(role));
   const [saved, setSaved] = useState(false);
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     controller.addFieldMission(form);
-    setForm(emptyForm);
+    setForm(emptyForm(role));
     setSaved(true);
   };
 
@@ -36,9 +42,17 @@ export function FieldOpsView({
     <main className="workspace-page">
       <div className="page-masthead">
         <div>
-          <span className="kicker">FIELD OPS / REAL-WORLD REPS</span>
-          <h2>Learn where the business lives.</h2>
-          <p>Observation, conversation, discomfort, follow-up, improvement.</p>
+          <span className="kicker">FIELD OPS / {role.toUpperCase()} REPS</span>
+          <h2>
+            {role === "ceo"
+              ? "Put the investment thesis in contact with reality."
+              : "Learn where the business lives."}
+          </h2>
+          <p>
+            {role === "ceo"
+              ? "Numbers, owners, lenders, listings, assets, assumptions, decisions."
+              : "Observation, conversation, discomfort, follow-up, improvement."}
+          </p>
         </div>
         <div className="page-stat">
           <strong>{controller.state.fieldMissions.length}</strong>
@@ -61,7 +75,7 @@ export function FieldOpsView({
                   setForm((current) => ({ ...current, template: event.target.value }))
                 }
               >
-                {fieldMissionTemplates.map((template) => (
+                {templates.map((template) => (
                   <option value={template} key={template}>{template}</option>
                 ))}
               </select>

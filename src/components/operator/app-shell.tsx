@@ -4,9 +4,14 @@ import type { ReactNode } from "react";
 import type { AppView } from "@/lib/domain/operator-state";
 import type { Rank } from "@/lib/domain/progression";
 import type { SyncStatus } from "@/lib/persistence/operator-state-sync-engine";
+import {
+  getExecutiveRoleDefinition,
+  type ExecutiveRole,
+} from "@/lib/domain/executive-role";
 
 interface AppShellProps {
   readonly activeView: AppView;
+  readonly role: ExecutiveRole;
   readonly onNavigate: (view: AppView) => void;
   readonly xp: number;
   readonly rank: Rank;
@@ -17,18 +22,18 @@ interface AppShellProps {
   readonly children: ReactNode;
 }
 
-const navigation: readonly {
+const baseNavigation: readonly {
   view: AppView;
   label: string;
   short: string;
 }[] = [
   { view: "command", label: "Command Center", short: "01" },
-  { view: "campaign", label: "Year One Campaign", short: "02" },
+  { view: "campaign", label: "Executive Training", short: "02" },
   { view: "field-ops", label: "Field Ops", short: "03" },
   { view: "network", label: "Relationship Network", short: "04" },
-  { view: "labs", label: "Operator Labs", short: "05" },
-  { view: "journal", label: "Operator Journal", short: "06" },
-  { view: "ventures", label: "Ventures & Pipeline", short: "07" },
+  { view: "labs", label: "Executive Labs", short: "05" },
+  { view: "journal", label: "Executive Journal", short: "06" },
+  { view: "ventures", label: "Founders & Ventures", short: "07" },
   { view: "settings", label: "Settings & Data", short: "08" },
 ];
 
@@ -42,6 +47,7 @@ const syncLabels: Readonly<Record<SyncStatus["phase"], string>> = {
 };
 
 export function AppShell({
+  role,
   activeView,
   onNavigate,
   xp,
@@ -52,10 +58,12 @@ export function AppShell({
   reducedMotion,
   children,
 }: AppShellProps) {
+  const roleDefinition = getExecutiveRoleDefinition(role);
+
   return (
     <div
       className={
-        "operator-shell" +
+        `operator-shell operator-shell--${role}` +
         (compactMode ? " operator-shell--compact" : "") +
         (reducedMotion ? " operator-shell--reduced-motion" : "")
       }
@@ -70,18 +78,18 @@ export function AppShell({
           <span className="wordmark__seal">SV</span>
           <span>
             <strong>SKADRA VENTURES</strong>
-            <small>OPERATOR MODE</small>
+            <small>EXECUTIVE MODE</small>
           </span>
         </button>
 
         <div className="sidebar__identity">
-          <span className="kicker kicker--gold">G-OPS / 01</span>
-          <h1>Operator<br />Command</h1>
-          <p>Gabi Operations Command System</p>
+          <span className="kicker kicker--gold">G-OPS / {roleDefinition.shortLabel}</span>
+          <h1>{roleDefinition.shortLabel}<br />Command</h1>
+          <p>Skadra Ventures {roleDefinition.label} development system</p>
         </div>
 
         <nav className="sidebar__nav" aria-label="Primary navigation">
-          {navigation.map((item) => (
+          {baseNavigation.map((item) => (
             <button
               className={activeView === item.view ? "nav-item nav-item--active" : "nav-item"}
               key={item.view}
@@ -129,7 +137,7 @@ export function AppShell({
               value={activeView}
               onChange={(event) => onNavigate(event.target.value as AppView)}
             >
-              {navigation.map((item) => (
+              {baseNavigation.map((item) => (
                 <option value={item.view} key={item.view}>
                   {item.label}
                 </option>

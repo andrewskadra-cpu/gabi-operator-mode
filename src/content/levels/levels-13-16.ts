@@ -1,4 +1,4 @@
-import { bossOptions, concept, defineLevel, question } from "@/content/levels/helpers";
+import { bossOptions, concept, defineLevel, question } from "./helpers.ts";
 
 export const levels13To16 = [
   defineLevel({
@@ -455,4 +455,3 @@ export const levels13To16 = [
       "What would employees and customers need to see from you before they believed new ownership could be trusted?",
   }),
 ] as const;
-

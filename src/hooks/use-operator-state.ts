@@ -7,6 +7,9 @@ import {
   type AppView,
   type CustomerExperienceAudit,
   type FieldMissionLog,
+  type FounderDecision,
+  type FounderMissionProgress,
+  type FounderMissionStatus,
   type JournalEntry,
   type LevelProgress,
   type LocationOpportunity,
@@ -16,6 +19,10 @@ import {
   type Relationship,
   type SharedVenture,
 } from "@/lib/domain/operator-state";
+import {
+  getExecutiveRoleDefinition,
+  type ExecutiveRole,
+} from "@/lib/domain/executive-role";
 import { advanceLocation } from "@/lib/domain/pipeline";
 import { LocalSyncMetadataRepository } from "@/lib/persistence/local-sync-metadata-repository";
 import {
@@ -34,6 +41,7 @@ import {
 } from "@/lib/persistence/operator-state-sync-engine";
 import { parseOperatorState } from "@/lib/persistence/operator-state-codec";
 import { SupabaseOperatorStateRepository } from "@/lib/persistence/supabase-operator-state-repository";
+import { SupabaseExecutiveProfileRepository } from "@/lib/persistence/supabase-executive-profile-repository";
 import { createClient } from "@/lib/supabase/client";
 
 type NewRecord<T extends { id: string; createdAt: string; updatedAt: string }> =
@@ -79,7 +87,9 @@ function stamp(state: OperatorState, updatedAt: string): OperatorState {
 
 export function useOperatorState(account: OperatorAccount) {
   const [state, setState] = useState<OperatorState>(() =>
-    createInitialOperatorState(),
+    createInitialOperatorState({
+      name: account.displayName || "Executive",
+    }),
   );
   const [hydrated, setHydrated] = useState(false);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({
@@ -94,8 +104,13 @@ export function useOperatorState(account: OperatorAccount) {
   const syncEngineRef = useRef<OperatorStateSyncEngine | null>(null);
 
   const repository = useMemo(
-    () => new LocalOperatorStateRepository(undefined, account.id),
-    [account.id],
+    () =>
+      new LocalOperatorStateRepository(undefined, account.id, () =>
+        createInitialOperatorState({
+          name: account.displayName || "Executive",
+        }),
+      ),
+    [account.displayName, account.id],
   );
   useEffect(() => {
     let cancelled = false;
@@ -475,6 +490,108 @@ export function useOperatorState(account: OperatorAccount) {
     [updateState],
   );
 
+  const assignExecutiveRole = useCallback(
+    async (role: ExecutiveRole) => {
+      const profileRepository = new SupabaseExecutiveProfileRepository(
+        createClient(),
+      );
+      const assignment = await profileRepository.assignRole(role);
+      const definition = getExecutiveRoleDefinition(assignment.role);
+
+      updateState(
+        (current) => ({
+          ...current,
+          profile: {
+            ...current.profile,
+            name: current.profile.name || account.displayName || "Executive",
+            title: definition.operatingTitle,
+            executiveRole: assignment.role,
+            roleSelectedAt: assignment.selectedAt,
+            onboardingCompletedAt: null,
+          },
+          currentCampaignId: definition.campaignId,
+          activeLevelId: definition.firstLevelId,
+          lastView: "command",
+        }),
+        true,
+      );
+    },
+    [account.displayName, updateState],
+  );
+
+  const completeRoleOnboarding = useCallback(() => {
+    updateState(
+      (current) => ({
+        ...current,
+        profile: {
+          ...current.profile,
+          onboardingCompletedAt:
+            current.profile.onboardingCompletedAt ?? new Date().toISOString(),
+        },
+      }),
+      true,
+    );
+  }, [updateState]);
+
+  const saveFounderMission = useCallback(
+    (
+      missionId: string,
+      updates: {
+        readonly status?: FounderMissionStatus;
+        readonly analysis?: string;
+        readonly recommendation?: string;
+        readonly decision?: FounderDecision;
+        readonly reflection?: string;
+      },
+    ) => {
+      updateState(
+        (current) => {
+          const executiveRole = current.profile.executiveRole;
+          if (!executiveRole) {
+            return current;
+          }
+
+          const now = new Date().toISOString();
+          const existing = current.founderMissions.find(
+            (mission) =>
+              mission.missionId === missionId &&
+              mission.executiveRole === executiveRole,
+          );
+          const status = updates.status ?? existing?.status ?? "in-progress";
+          const mission: FounderMissionProgress = {
+            id: existing?.id ?? makeId("founder"),
+            missionId,
+            executiveRole,
+            status,
+            analysis: updates.analysis ?? existing?.analysis ?? "",
+            recommendation:
+              updates.recommendation ?? existing?.recommendation ?? "",
+            decision: updates.decision ?? existing?.decision ?? null,
+            reflection: updates.reflection ?? existing?.reflection ?? "",
+            completedAt:
+              status === "complete"
+                ? existing?.completedAt ?? now
+                : existing?.completedAt ?? null,
+            createdAt: existing?.createdAt ?? now,
+            updatedAt: now,
+          };
+
+          return {
+            ...current,
+            founderMissions: [
+              mission,
+              ...current.founderMissions.filter(
+                (item) => item.id !== mission.id,
+              ),
+            ],
+          };
+        },
+        true,
+      );
+    },
+    [updateState],
+  );
+
   const resolveMigration = useCallback(
     async (choice: MigrationChoice) => {
       const syncEngine = syncEngineRef.current;
@@ -482,12 +599,24 @@ export function useOperatorState(account: OperatorAccount) {
         throw new Error("Cloud sync is still starting.");
       }
 
+      const legacyRole = migration?.legacyState.profile.executiveRole;
+      if (
+        !state.profile.executiveRole &&
+        legacyRole &&
+        choice !== "keep-cloud"
+      ) {
+        const profileRepository = new SupabaseExecutiveProfileRepository(
+          createClient(),
+        );
+        await profileRepository.assignRole(legacyRole);
+      }
+
       const resolved = await syncEngine.resolveMigration(choice);
       skipNextSaveRef.current = true;
       setState(resolved);
       setMigration(null);
     },
-    [],
+    [migration, state.profile.executiveRole],
   );
 
   const retrySync = useCallback(
@@ -497,8 +626,16 @@ export function useOperatorState(account: OperatorAccount) {
 
   const resetState = useCallback(() => {
     urgentSaveRef.current = true;
-    setState(createInitialOperatorState());
-  }, []);
+    setState((current) =>
+      createInitialOperatorState({
+        name: account.displayName || current.profile.name || "Executive",
+        title: current.profile.title,
+        executiveRole: current.profile.executiveRole,
+        roleSelectedAt: current.profile.roleSelectedAt,
+        onboardingCompletedAt: current.profile.onboardingCompletedAt,
+      }),
+    );
+  }, [account.displayName]);
 
   return {
     state,
@@ -522,6 +659,9 @@ export function useOperatorState(account: OperatorAccount) {
     addSharedVenture,
     savePeopleLabAnswer,
     updatePreferences,
+    assignExecutiveRole,
+    completeRoleOnboarding,
+    saveFounderMission,
     resolveMigration,
     retrySync,
     resetState,

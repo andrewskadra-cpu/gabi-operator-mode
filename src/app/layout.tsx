@@ -3,9 +3,9 @@ import { headers } from "next/headers";
 import type { ReactNode } from "react";
 import "./globals.css";
 
-const title = "Skadra Ventures — Operator Mode";
+const title = "Skadra Ventures — G-OPS";
 const description =
-  "G-OPS is Gabi's executive operations and leadership simulator for building the judgment to make companies perform.";
+  "G-OPS is Skadra Ventures' dual-track CEO and COO executive-development system for building owner and operator judgment.";
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();

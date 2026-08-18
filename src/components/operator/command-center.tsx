@@ -3,9 +3,17 @@
 import type { Achievement } from "@/lib/domain/achievements";
 import type { AppView, OperatorState } from "@/lib/domain/operator-state";
 import type { OperatorLevel } from "@/content/types";
+import type { ExecutiveRole } from "@/lib/domain/executive-role";
+import {
+  formatExecutiveSkill,
+  getExecutiveRoleDefinition,
+} from "@/lib/domain/executive-role";
+import {
+  getExecutiveNextAction,
+  type ExecutiveSkillScore,
+} from "@/lib/domain/executive-scorecards";
 import type { SyncStatus } from "@/lib/persistence/operator-state-sync-engine";
 import {
-  getNextActionLabel,
   getRankProgress,
   type Rank,
 } from "@/lib/domain/progression";
@@ -17,6 +25,8 @@ interface CommandCenterProps {
   readonly campaignProgress: number;
   readonly currentLevel: OperatorLevel;
   readonly achievements: readonly Achievement[];
+  readonly role: ExecutiveRole;
+  readonly skillScores: readonly ExecutiveSkillScore[];
   readonly syncStatus: SyncStatus;
   readonly onOpenLevel: () => void;
   readonly onNavigate: (view: AppView) => void;
@@ -29,6 +39,8 @@ export function CommandCenter({
   campaignProgress,
   currentLevel,
   achievements,
+  role,
+  skillScores,
   syncStatus,
   onOpenLevel,
   onNavigate,
@@ -36,14 +48,16 @@ export function CommandCenter({
   const rankProgress = getRankProgress(xp, rank);
   const nextRankXp = rank.nextMinimumXp;
   const recentAchievements = achievements.slice(-3).reverse();
+  const roleDefinition = getExecutiveRoleDefinition(role);
+  const nextAction = getExecutiveNextAction(state, currentLevel);
 
   return (
     <main className="workspace-page">
       <div className="page-masthead">
         <div>
-          <span className="kicker">G-OPS / COMMAND CENTER</span>
+          <span className="kicker">G-OPS / {roleDefinition.commandName}</span>
           <h2>Good morning, {state.profile.name}.</h2>
-          <p>Your next move is ready. Keep the operating rhythm.</p>
+          <p>{roleDefinition.commandLede}</p>
         </div>
         <div className={`status-chip status-chip--${syncStatus.phase}`}>
           <span className="status-chip__pulse" aria-hidden="true" />
@@ -60,7 +74,7 @@ export function CommandCenter({
       <section className="command-grid" aria-label="Operator command center">
         <article className="card rank-card">
           <div className="card__header">
-            <span className="kicker">CURRENT RANK</span>
+            <span className="kicker">{roleDefinition.shortLabel} RANK</span>
             <span className="card__code">R-01</span>
           </div>
           <div className="rank-card__body">
@@ -95,14 +109,14 @@ export function CommandCenter({
         <article className="card progress-card">
           <div className="card__header">
             <span className="kicker">CAMPAIGN PROGRESS</span>
-            <span className="card__code">YEAR 01</span>
+            <span className="card__code">CAMPAIGN I</span>
           </div>
           <div className="progress-card__ring" style={{ "--progress": campaignProgress } as React.CSSProperties}>
             <span>{campaignProgress}%</span>
           </div>
           <div>
             <h3>{Object.values(state.levelProgress).filter((item) => item.completedAt).length} of 16 levels complete</h3>
-            <p>Core Operator Campaign</p>
+            <p>{roleDefinition.campaignName}</p>
           </div>
         </article>
 
@@ -117,9 +131,9 @@ export function CommandCenter({
               {String(currentLevel.number).padStart(2, "0")}
             </div>
             <div>
-              <span className="gold-label">{getNextActionLabel(state, currentLevel)}</span>
-              <h3>{currentLevel.title}</h3>
-              <p>{currentLevel.missionBrief}</p>
+              <span className="gold-label">{nextAction.label}</span>
+              <h3>{nextAction.title}</h3>
+              <p>{nextAction.description}</p>
               <button className="primary-button primary-button--gold" type="button" onClick={onOpenLevel}>
                 CONTINUE MISSION
                 <span aria-hidden="true">→</span>
@@ -143,31 +157,54 @@ export function CommandCenter({
 
         <article className="card pulse-card">
           <div className="card__header">
-            <span className="kicker">OPERATOR PULSE</span>
+            <span className="kicker">{roleDefinition.shortLabel} PULSE</span>
             <span className="card__code">LIVE</span>
           </div>
           <div className="metric-row">
             <div>
               <strong>{state.fieldMissions.length}</strong>
-              <span>Field ops</span>
+              <span>{role === "ceo" ? "Investment reps" : "Field ops"}</span>
             </div>
             <div>
               <strong>{state.relationships.length}</strong>
               <span>Network</span>
             </div>
             <div>
-              <strong>{state.locations.length}</strong>
-              <span>Locations</span>
+              <strong>
+                {role === "ceo"
+                  ? state.sharedVentures.length + state.founderMissions.length
+                  : state.locations.length}
+              </strong>
+              <span>{role === "ceo" ? "Cases" : "Locations"}</span>
             </div>
           </div>
           <div className="principle-line">
-            <span>UNDERSTAND</span>
-            <span>CONNECT</span>
-            <span>LEAD</span>
-            <span>EXECUTE</span>
-            <span>IMPROVE</span>
-            <span>SCALE</span>
-            <span>GIVE</span>
+            {roleDefinition.principles.map((principle) => (
+              <span key={principle}>{principle}</span>
+            ))}
+          </div>
+        </article>
+
+        <article className="card executive-scorecard">
+          <div className="card__header">
+            <span className="kicker">EXECUTIVE SCORECARD</span>
+            <span className="card__code">EVIDENCE-BASED</span>
+          </div>
+          <div className="executive-scorecard__grid">
+            {skillScores.map((item) => (
+              <div key={item.skill}>
+                <span>{formatExecutiveSkill(item.skill)}</span>
+                <strong>{item.score}</strong>
+                <div aria-label={`${item.score} out of 100`}>
+                  <i style={{ width: `${item.score}%` }} />
+                </div>
+                <small>
+                  {item.evidenceCount === 0
+                    ? "No evidence yet"
+                    : `${item.evidenceCount} evidence ${item.evidenceCount === 1 ? "source" : "sources"}`}
+                </small>
+              </div>
+            ))}
           </div>
         </article>
 
@@ -218,9 +255,9 @@ export function CommandCenter({
       </section>
 
       <blockquote className="command-quote">
-        Great businesses are created by serving customers, building strong teams,
-        creating reliable systems, protecting culture, developing leaders, and
-        executing consistently.
+        {role === "ceo"
+          ? "The CEO's job is not to predict perfectly. It is to build the people, evidence, systems, and capital discipline that make better decisions compound."
+          : "Great businesses are created by serving customers, building strong teams, creating reliable systems, protecting culture, developing leaders, and executing consistently."}
       </blockquote>
     </main>
   );

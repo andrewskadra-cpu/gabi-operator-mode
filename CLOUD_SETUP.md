@@ -1,6 +1,6 @@
-# Operator Mode cloud setup
+# G-OPS V2 cloud setup
 
-This guide is for setting up Gabi's Supabase account and connecting the existing GitHub-to-Vercel deployment. You do not need to be an experienced software engineer.
+This guide connects the unified CEO/COO G-OPS application to the existing Supabase and GitHub-to-Vercel deployment. It preserves the original Gabi Operator Mode data.
 
 Operator Mode needs two browser-safe Supabase values. It does **not** need a service-role key, database password, OpenAI key, or any paid API.
 
@@ -13,14 +13,21 @@ Have these available:
 - the current Vercel production URL
 - about 20 minutes
 
-The database migration is committed at `supabase/migrations/202608170001_operator_mode_cloud.sql`.
+The migrations are committed at:
+
+```text
+supabase/migrations/202608170001_operator_mode_cloud.sql
+supabase/migrations/202608180001_dual_executive_tracks.sql
+```
+
+The first file is the unchanged production baseline. The second file is the additive G-OPS V2 upgrade.
 
 ## 1. Create the Supabase project
 
 1. Go to [supabase.com](https://supabase.com) and sign in.
 2. Choose **New project**.
 3. Select or create an organization.
-4. Name the project something clear, such as `skadra-gabi-operator-mode`.
+4. Name the project something clear, such as `skadra-g-ops`.
 5. Create and securely store the database password. Operator Mode does not put this password in source code or Vercel.
 6. Choose a region near Gabi.
 7. Create the project and wait until Supabase reports that it is ready.
@@ -43,18 +50,41 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_YOUR_KEY
 
 These two values are intentionally browser-safe when Row Level Security is enabled. Do not use or expose the `service_role` key. Do not add a service-role key to Vercel.
 
-## 3. Apply the database migration
+## 3. Apply the database migrations
+
+### Existing Operator Mode Supabase project
+
+Do not rerun or edit the original migration. Apply only the complete new file:
+
+```text
+supabase/migrations/202608180001_dual_executive_tracks.sql
+```
+
+Before applying it, understand exactly what it does:
+
+- adds nullable `executive_role`, `role_selected_at`, and `role_onboarding_completed_at` columns to `profiles`
+- sets existing profiles that already have `training_progress` to COO and retains all existing records
+- creates `founder_mission_progress` with stable IDs and per-account CEO/COO evidence
+- enables own-user and role-matching RLS on that new table
+- adds authenticated `assign_executive_role`, `load_executive_state`, and `save_executive_state` functions
+- leaves the original tables, data, IDs, revisions, functions, and migration file intact
+
+Test this migration against a non-production Supabase project and take a current backup/export before applying it to the live project. It contains no reset, drop, truncate, or destructive data rewrite.
+
+### Brand-new Supabase project
+
+Apply both complete files in timestamp order: `202608170001_operator_mode_cloud.sql`, then `202608180001_dual_executive_tracks.sql`.
 
 The simplest method is the Supabase SQL Editor:
 
 1. In Supabase, choose **SQL Editor**.
 2. Choose **New query**.
-3. Open `supabase/migrations/202608170001_operator_mode_cloud.sql` from this repository.
+3. Open the migration file appropriate to the project state as explained above.
 4. Copy the complete file into the SQL Editor.
 5. Choose **Run** once.
 6. Confirm the query finishes without errors.
 
-Then open **Table Editor**. You should see these 15 tables:
+Then open **Table Editor**. After both migrations, you should see these 16 tables:
 
 ```text
 profiles
@@ -72,11 +102,12 @@ journal_entries
 locations
 founders_assessments
 sync_operations
+founder_mission_progress
 ```
 
-The migration enables Row Level Security and creates own-record policies on all 15 tables. Do not disable RLS.
+The migrations enable Row Level Security and create own-record policies on all 16 tables. Do not disable RLS.
 
-If you already use the Supabase CLI, you may link the repository and run `supabase db push` instead. Use only one method for this first migration.
+If you already use the Supabase CLI, you may link the repository and run `supabase db push` instead. Use only one migration method for a given project.
 
 ## 4. Configure email authentication
 
@@ -130,14 +161,20 @@ Environment changes do not modify an already-built deployment.
 3. Wait for the production deployment to pass.
 4. Open the normal Vercel URL.
 
-## 8. Create Gabi's account
+## 8. Create and assign the two accounts
+
+For Gabi's existing account, sign in normally. The migration assigns an account with existing training progress to COO automatically; no original lesson or operating record is recreated.
+
+For a new account:
 
 1. On the branded G-OPS sign-in screen, choose **Create account**.
-2. Enter `Gabi` as the display name.
-3. Enter the email address that should permanently own the training data.
-4. Choose a strong password with at least eight characters.
-5. If email confirmation is enabled, open the confirmation email and follow the link.
-6. Sign in.
+2. Enter the correct person's display name and permanent email address.
+3. Choose a strong password with at least eight characters.
+4. If email confirmation is enabled, open the confirmation email and follow the link.
+5. Sign in and choose the correct CEO or COO track.
+6. Read the confirmation warning and confirm once.
+
+Create Andrew and Gabi as separate Supabase Auth users. Never share one login. Role selection is stored in Supabase and is not casually switchable in Settings.
 
 Supabase creates a stable user ID. All database policies compare that ID to each row's `user_id`.
 
@@ -151,6 +188,7 @@ If this browser contains V1 progress, Operator Mode displays:
 - If cloud progress also exists, compare the timestamps and record counts. **Merge safely** is the normal choice.
 - The old localStorage data is not deleted.
 - If the cloud write fails, migration remains incomplete and the original device copy remains available.
+- Imported original Operator Mode progress is retained on the COO track.
 
 ## 10. Test saving
 
@@ -168,9 +206,11 @@ If this browser contains V1 progress, Operator Mode displays:
 ## 12. Test another device or browser
 
 1. Open the same production URL on a different browser, phone, or computer.
-2. Sign in with Gabi's same account.
+2. Sign in with the same account used in the first browser.
 3. Confirm progress, XP, achievements, journal entries, relationships, missions, and pipeline data match.
 4. Make one change and confirm it appears after reopening the first device.
+
+Repeat the test independently for one CEO account and one COO account. Confirm each account sees only its own role, progress, founder analysis, and export.
 
 ## 13. Verify data in Supabase
 
@@ -181,8 +221,10 @@ In Supabase **Table Editor**, inspect a few tables such as:
 - `journal_entries`
 - `relationships`
 - `locations`
+- `profiles` (`executive_role` and role timestamps)
+- `founder_mission_progress`
 
-Rows should contain Gabi's Supabase user ID in `user_id`. Do not edit rows manually during normal use.
+Rows should contain the owning account's Supabase user ID in `user_id`. Do not edit roles or progress rows manually during normal use.
 
 ## 14. Test the portable backup
 
@@ -225,3 +267,18 @@ The code, migration, tests, and production build can be validated without creden
 - the final Vercel URL configured in Supabase Auth
 
 Do not send a database password or service-role key. If Codex is asked to perform live validation later, set the two browser-safe values in `.env.local` or the approved environment rather than committing them.
+
+## V2 production checklist
+
+1. Back up/export Gabi's current data.
+2. Apply `202608180001_dual_executive_tracks.sql` to a non-production project and validate it.
+3. Apply that same complete file to the existing production Supabase project once.
+4. Verify Gabi's `profiles.executive_role` is `coo` and her existing row counts remain present.
+5. Deploy the V2 code to Vercel after the migration succeeds.
+6. Sign in as Gabi and confirm her prior level, drafts, XP evidence, records, and COO dashboard.
+7. Create/sign in as Andrew, choose CEO once, and confirm Financial Statements is Level 1.
+8. Test one lesson draft and one founder-mission draft on a second browser for each account.
+9. Verify the accounts cannot read one another's records with authenticated client requests.
+10. Export each account's JSON backup and retain it securely.
+
+No Vercel environment-variable names or values change for G-OPS V2.
